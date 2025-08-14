@@ -1,0 +1,64 @@
+# macOS specific files
+.DS_Store
+.localized
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Xcode specific files
+# Build products
+build/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# Project and workspace settings (optional, depending on team workflow)
+# Comment out if you want to track these for team consistency
+# *.xcodeproj/project.xcworkspace/
+# *.xcworkspace/contents.xcworkspacedata
+# *.xcodeproj/project.pbxproj
+
+# User data
+*.xcuserdatad/
+*.xcassets/
+*.playground/
+
+# Swift Package Manager (SPM) generated files
+.build/
+
+# Carthage generated files (if used)
+Carthage/Build/
+
+# CocoaPods generated files (if used)
+Pods/
+Podfile.lock
+
+# Other common ignored files
+*.log
+*.bak
+*.swp
+*.swo
+*.tmp
+*.zip
+*.tar.gz
+*.dmg
+*.ipa
+*.app
+
+# Video files
+*.mp4
+*.mov
+
+# Logs
+*.log
+
+# Certificate files
+*.p12
+*.cer
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
