@@ -62,3 +62,7 @@ Podfile.lock
 .env.local
 .env.production
 .env.staging
+
+# IDE specific files
+.vscode/
+.idea/
