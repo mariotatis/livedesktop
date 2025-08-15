@@ -49,7 +49,7 @@ extension PopularVideo {
             author: userName,
             category: "Popular", // Default category for popular videos
             imageURL: image,
-            videoURL: videoFileHd
+            videoURL: videoFileSd
         )
     }
 }

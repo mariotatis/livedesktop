@@ -58,7 +58,7 @@ struct VideoCard: View {
         VStack(alignment: .leading, spacing: 0) {
             // Video Preview
             ZStack {
-                AsyncImageView(url: video.imageURL)
+                HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL)
                     .aspectRatio(16/9, contentMode: .fit)
                     .cornerRadius(12)
                 
@@ -106,7 +106,8 @@ struct VideoCard: View {
                 
                 Spacer()
             }
-            .padding(.horizontal, 4)
+            .padding(.leading, 0)
+            .padding(.trailing, 4)
             .padding(.top, 8)
         }
         .background(Color.clear)
