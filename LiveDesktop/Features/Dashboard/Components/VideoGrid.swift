@@ -8,7 +8,7 @@ struct VideoGrid: View {
     
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 20), count: 3), spacing: 20) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 32), count: 3), spacing: 32) {
                 ForEach(filteredVideos) { video in
                     VideoCard(
                         video: video,
@@ -41,9 +41,9 @@ struct VideoGrid: View {
                     .gridCellColumns(3)
                 }
             }
+            .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
-        .padding(.horizontal, 24)
         .background(Color(hex: "#1f1f1f"))
         .zIndex(1)
     }
@@ -106,7 +106,7 @@ struct VideoCard: View {
                 
                 Spacer()
             }
-            .padding(.leading, 0)
+            .padding(.leading, 8)
             .padding(.trailing, 4)
             .padding(.top, 8)
         }

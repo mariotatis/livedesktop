@@ -36,6 +36,7 @@ struct DashboardView: View {
                 navItems: navItems,
                 displays: displayManager.getDisplayNames()
             )
+            .frame(width: 280)
             
             // Main Content Area
             VStack(spacing: 0) {

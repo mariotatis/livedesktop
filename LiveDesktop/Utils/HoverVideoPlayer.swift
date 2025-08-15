@@ -31,23 +31,32 @@ struct HoverVideoPlayer: View {
     @State private var hoverTimer: Timer?
     @State private var player: AVPlayer?
     @State private var shouldShowVideo = false
+    @State private var isVideoReady = false
     
     var body: some View {
         ZStack {
             // Thumbnail image (always visible as background)
             AsyncImageView(url: imageURL)
-                .opacity(shouldShowVideo ? 0.3 : 1.0)
+                .opacity(shouldShowVideo && isVideoReady ? 0.0 : 1.0)
             
             // Video player (shown on hover after delay)
             if shouldShowVideo, let player = player {
                 VideoPlayerView(player: player)
                     .allowsHitTesting(false)
+                    .opacity(isVideoReady ? 1.0 : 0.0)
                     .onAppear {
-                        player.play()
+                        // Wait for video to be ready before playing
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            player.play()
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                isVideoReady = true
+                            }
+                        }
                     }
                     .onDisappear {
                         player.pause()
                         player.seek(to: .zero)
+                        isVideoReady = false
                     }
             }
         }
@@ -87,6 +96,7 @@ struct HoverVideoPlayer: View {
     private func stopVideoPlayback() {
         withAnimation(.easeInOut(duration: 0.3)) {
             shouldShowVideo = false
+            isVideoReady = false
         }
         
         player?.pause()
