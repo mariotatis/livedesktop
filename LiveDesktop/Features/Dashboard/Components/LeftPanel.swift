@@ -72,6 +72,7 @@ struct LeftPanel: View {
                     if let selectedVideo = selectedVideo {
                         // Show selected video preview
                         ActiveDisplayPreview(video: selectedVideo)
+                            .id("preview-\(selectedVideo.id)") // Stable ID to prevent recreation
                             .frame(height: 120)
                             .cornerRadius(8)
                     } else {

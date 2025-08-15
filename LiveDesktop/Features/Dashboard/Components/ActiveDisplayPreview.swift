@@ -4,8 +4,6 @@ import AVFoundation
 
 struct ActiveDisplayPreview: View {
     let video: VideoItem
-    @ObservedObject private var downloadsService = DownloadsService.shared
-    @ObservedObject private var popularsService = PopularsService.shared
     
     var body: some View {
         ZStack {
@@ -16,65 +14,76 @@ struct ActiveDisplayPreview: View {
             }
             .cornerRadius(8)
             .clipped()
+            .background(Color.clear)
             
-            // Video Player overlay (always present but controlled via opacity)
+            // Video Player overlay (always visible and playing)
             if let videoURL = URL(string: video.videoURL ?? "") {
                 ActiveVideoPlayerView(videoURL: videoURL, videoId: video.id)
+                    .id("video-player-\(video.id)") // Stable ID to prevent recreation
                     .cornerRadius(8)
                     .clipped()
                     .background(Color.clear)
-                    .opacity(downloadsService.isDownloading(videoId: video.id) ? 0.0 : 1.0)
-                    .animation(.easeInOut(duration: 0.3), value: downloadsService.isDownloading(videoId: video.id))
             }
             
-            // Download overlay
-            ZStack {
-                // Download Progress Bar (like VideoGrid)
-                if downloadsService.isDownloading(videoId: video.id) {
-                    VStack {
-                        Spacer()
-                        ProgressView(value: downloadsService.getDownloadProgress(videoId: video.id))
-                            .progressViewStyle(LinearProgressViewStyle(tint: .blue))
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(4)
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 8)
-                    }
-                }
-                
-                // Action Buttons
+            // Download overlay - separate component to isolate state changes
+            ActiveDisplayPreviewOverlay(video: video)
+        }
+    }
+}
+
+struct ActiveDisplayPreviewOverlay: View {
+    let video: VideoItem
+    @ObservedObject private var downloadsService = DownloadsService.shared
+    @ObservedObject private var popularsService = PopularsService.shared
+    
+    var body: some View {
+        ZStack {
+            // Download Progress Bar (like VideoGrid)
+            if downloadsService.isDownloading(videoId: video.id) {
                 VStack {
-                    HStack {
-                        Spacer()
-                        
-                        // Download button (only show if not downloading and not downloaded)
-                        if !downloadsService.isDownloading(videoId: video.id) && !downloadsService.isDownloaded(videoId: video.id) {
-                            Button(action: {
-                                // Get HD URL from PopularsService like VideoGrid does
-                                print("🔍 ActiveDisplayPreview: Attempting download for video ID: \(video.id)")
-                                print("🔍 ActiveDisplayPreview: PopularsService has \(popularsService.videos.count) videos")
-                                
-                                if let popularVideo = popularsService.videos.first(where: { String($0.id) == video.id }) {
-                                    print("✅ ActiveDisplayPreview: Found video in PopularsService, HD URL: \(popularVideo.videoFileHd)")
-                                    downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
-                                } else {
-                                    print("❌ ActiveDisplayPreview: Video \(video.id) not found in PopularsService")
-                                    print("🔍 ActiveDisplayPreview: Available video IDs: \(popularsService.videos.map { String($0.id) })")
-                                }
-                            }) {
-                                Image(systemName: "arrow.down")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .frame(width: 28, height: 28)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(10)
-                        }
-                    }
                     Spacer()
+                    ProgressView(value: downloadsService.getDownloadProgress(videoId: video.id))
+                        .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(4)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 8)
                 }
-                .padding(8)
+            }
+            
+            // Download/Delete button overlay
+            VStack {
+                HStack {
+                    Spacer()
+                    
+                    // Download button (only show if not downloading and not downloaded)
+                    if !downloadsService.isDownloading(videoId: video.id) && !downloadsService.isDownloaded(videoId: video.id) {
+                        Button(action: {
+                            // Get HD URL from PopularsService like VideoGrid does
+                            print("🔍 ActiveDisplayPreview: Attempting download for video ID: \(video.id)")
+                            print("🔍 ActiveDisplayPreview: PopularsService has \(popularsService.videos.count) videos")
+                            
+                            if let popularVideo = popularsService.videos.first(where: { String($0.id) == video.id }) {
+                                print("✅ ActiveDisplayPreview: Found video in PopularsService, HD URL: \(popularVideo.videoFileHd)")
+                                downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
+                            } else {
+                                print("❌ ActiveDisplayPreview: Video \(video.id) not found in PopularsService")
+                                print("🔍 ActiveDisplayPreview: Available video IDs: \(popularsService.videos.map { String($0.id) })")
+                            }
+                        }) {
+                            Image(systemName: "arrow.down")
+                                .foregroundColor(.white)
+                                .font(.system(size: 14, weight: .medium))
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(10)
+                        .padding(.top, 8)
+                        .padding(.trailing, 8)
+                    }
+                }
+                Spacer()
             }
         }
     }
@@ -143,7 +152,6 @@ class SafePlayerObserver: NSObject {
 struct ActiveVideoPlayerView: NSViewRepresentable {
     let videoURL: URL
     let videoId: String
-    @ObservedObject private var downloadsService = DownloadsService.shared
     
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
@@ -159,9 +167,8 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
         // Initially hide player until video is ready to avoid black box
         playerView.alphaValue = 0.0
         
-        // Check if we have a local downloaded version first
-        let localURL = downloadsService.getLocalVideoURL(videoId: videoId) ?? videoURL
-        let player = AVPlayer(url: localURL)
+        // Use the provided video URL directly
+        let player = AVPlayer(url: videoURL)
         
         // Configure player for looping
         player.actionAtItemEnd = AVPlayer.ActionAtItemEnd.none
@@ -198,25 +205,7 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
-        // Update the player when video changes
-        guard let playerView = nsView.subviews.first as? AVPlayerView else { return }
-        
-        // Check if we need to update the video
-        let localURL = downloadsService.getLocalVideoURL(videoId: videoId) ?? videoURL
-        
-        if playerView.player?.currentItem?.asset != AVURLAsset(url: localURL) {
-            // Create new player with updated URL
-            let newPlayer = AVPlayer(url: localURL)
-            newPlayer.actionAtItemEnd = AVPlayer.ActionAtItemEnd.none
-            newPlayer.isMuted = true
-            newPlayer.volume = 0.0
-            
-            // Update player view
-            playerView.player = newPlayer
-            
-            // Setup new observer
-            let observer = SafePlayerObserver(playerView: playerView, player: newPlayer)
-            objc_setAssociatedObject(nsView, "observer", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        }
+        // Don't update the player - let it play continuously
+        // This prevents black flashing when video selection changes
     }
 }
