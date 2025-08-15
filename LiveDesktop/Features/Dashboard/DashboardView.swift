@@ -6,11 +6,11 @@ struct DashboardView: View {
     @State private var selectedDisplay: String? = nil
     @State private var searchText = ""
     @State private var selectedFilterOption: String? = "All"
-    @State private var likedVideos: Set<String> = []
     
     // MARK: - Managers
     @ObservedObject private var displayManager = DisplayManager.shared
     @ObservedObject private var popularsService = PopularsService.shared
+    @ObservedObject private var favoritesService = FavoritesService.shared
     
     // MARK: - Data
     private let navItems = ["Popular", "Favorites", "Downloads"]
@@ -18,7 +18,16 @@ struct DashboardView: View {
     
     // MARK: - Computed Properties
     private var filteredVideos: [VideoItem] {
-        let videos = popularsService.videos.map { $0.videoItem }
+        let videos: [VideoItem]
+        
+        // Switch between Popular and Favorites based on selected nav item
+        if selectedNavItem == "Favorites" {
+            let favoriteVideos = favoritesService.getFavoriteVideos(from: popularsService.videos)
+            videos = favoriteVideos.map { $0.videoItem }
+        } else {
+            videos = popularsService.videos.map { $0.videoItem }
+        }
+        
         let currentFilter = selectedFilterOption ?? "All"
         let filtered = currentFilter == "All" ? videos : videos.filter { $0.category == currentFilter }
         if searchText.isEmpty {
@@ -63,10 +72,12 @@ struct DashboardView: View {
                 } else {
                     VideoGrid(
                         filteredVideos: filteredVideos,
-                        likedVideos: $likedVideos,
+                        likedVideos: .constant(favoritesService.favoriteVideoIds),
                         isLoading: popularsService.isLoading,
                         onLoadMore: {
-                            popularsService.loadNextPage()
+                            if selectedNavItem == "Popular" {
+                                popularsService.loadNextPage()
+                            }
                         }
                     )
                 }

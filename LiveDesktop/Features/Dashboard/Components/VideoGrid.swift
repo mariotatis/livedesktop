@@ -59,6 +59,8 @@ struct VideoCard: View {
     let isLiked: Bool
     let onLike: (String) -> Void
     
+    @ObservedObject private var favoritesService = FavoritesService.shared
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Video Preview
@@ -87,10 +89,10 @@ struct VideoCard: View {
                         
                         // Like Button
                         Button {
-                            onLike(video.id)
+                            favoritesService.toggleFavorite(videoId: video.id)
                         } label: {
-                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                                .foregroundColor(isLiked ? .red : .white)
+                            Image(systemName: favoritesService.isFavorite(videoId: video.id) ? "heart.fill" : "heart")
+                                .foregroundColor(favoritesService.isFavorite(videoId: video.id) ? .red : .white)
                                 .font(.system(size: 14, weight: .medium))
                                 .frame(width: 28, height: 28)
                         }
