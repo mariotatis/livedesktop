@@ -101,7 +101,14 @@ struct LeftPanel: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .padding(.horizontal, 20)
-                .padding(.bottom, 30)
+                
+                // Made with love text
+                Text("Made with ❤️ by Mario Tatis.")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 30)
             }
         }
         .frame(width: 280)
