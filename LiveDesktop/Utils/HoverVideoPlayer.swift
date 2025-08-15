@@ -65,7 +65,7 @@ struct HoverVideoPlayer: View {
             
             if hovering {
                 // Start timer for 1 second delay
-                hoverTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
                     if isHovering {
                         startVideoPlayback()
                     }
