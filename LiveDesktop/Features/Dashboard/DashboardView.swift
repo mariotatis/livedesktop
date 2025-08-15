@@ -3,14 +3,16 @@ import SwiftUI
 struct DashboardView: View {
     // MARK: - State Variables
     @State private var selectedNavItem = "Popular"
-    @State private var selectedDisplay: String? = "Built-in Retina Display"
+    @State private var selectedDisplay: String? = nil
     @State private var searchText = ""
     @State private var selectedFilterOption: String? = "All"
     @State private var likedVideos: Set<String> = []
     
+    // MARK: - Managers
+    @ObservedObject private var displayManager = DisplayManager.shared
+    
     // MARK: - Data
     private let navItems = ["Popular", "Favorites", "Downloads"]
-    private let displays = ["Built-in Retina Display", "External Monitor 1", "External Monitor 2"]
     private let filterOptions = ["All", "Nature", "Cities", "Ocean", "Abstract"]
     
     private let videoData = [
@@ -41,7 +43,7 @@ struct DashboardView: View {
                 selectedNavItem: $selectedNavItem,
                 selectedDisplay: $selectedDisplay,
                 navItems: navItems,
-                displays: displays
+                displays: displayManager.getDisplayNames()
             )
             
             // Main Content Area
@@ -63,6 +65,23 @@ struct DashboardView: View {
         }
         .background(Color(hex: "#1f1f1f"))
         .frame(minWidth: 1000, minHeight: 700)
+        .onAppear {
+            // Auto-select first available display when view appears
+            if selectedDisplay == nil && !displayManager.availableDisplays.isEmpty {
+                selectedDisplay = displayManager.availableDisplays.first?.name
+            }
+        }
+        .onChange(of: displayManager.availableDisplays) { displays in
+            // Handle display changes - ensure selected display is still valid
+            if let currentSelection = selectedDisplay,
+               !displays.contains(where: { $0.name == currentSelection }) {
+                // Current selection is no longer available, select first available
+                selectedDisplay = displays.first?.name
+            } else if selectedDisplay == nil && !displays.isEmpty {
+                // No selection but displays are available, select first
+                selectedDisplay = displays.first?.name
+            }
+        }
     }
 }
 

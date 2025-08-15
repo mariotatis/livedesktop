@@ -1,11 +1,13 @@
 import Cocoa
 import AVKit
 import AVFoundation
+import Combine
 
 class WallpaperManager: NSObject {
     private var windows: [NSWindow] = []
     private var players: [AVPlayer] = []
     private var isEnabled = false
+    private var displayChangeObserver: AnyCancellable?
     
     var isWallpaperEnabled: Bool {
         return isEnabled
@@ -17,33 +19,20 @@ class WallpaperManager: NSObject {
     }
     
     private func setupDisplayChangeMonitoring() {
-        // Listen for display configuration changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleDisplayConfigurationChange),
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
-    }
-    
-    @objc private func handleDisplayConfigurationChange() {
-        // Only refresh if wallpaper is currently enabled
-        guard isEnabled else { return }
-        
-        // Delay the refresh slightly to ensure display changes are fully processed
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.refreshWallpaperForDisplayChanges()
-        }
-    }
-    
-    private func refreshWallpaperForDisplayChanges() {
-        print("Display configuration changed - refreshing wallpapers")
-        
-        // Clean up existing wallpapers
-        cleanupWallpaper()
-        
-        // Re-setup wallpapers for current display configuration
-        setupWallpaper()
+        // Listen to DisplayManager's display changes
+        displayChangeObserver = DisplayManager.shared.$availableDisplays
+            .dropFirst() // Skip initial value
+            .sink { [weak self] _ in
+                guard let self = self, self.isEnabled else { return }
+                
+                print("Display configuration changed - refreshing wallpapers")
+                
+                // Delay the refresh slightly to ensure display changes are fully processed
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.cleanupWallpaper()
+                    self.setupWallpaper()
+                }
+            }
     }
     
     func enableWallpaper() {
@@ -75,8 +64,8 @@ class WallpaperManager: NSObject {
         // Clean up any existing wallpapers
         cleanupWallpaper()
         
-        // Create wallpaper for each connected screen
-        for screen in NSScreen.screens {
+        // Create wallpaper for each connected screen using shared DisplayManager
+        for screen in DisplayManager.shared.getAllScreens() {
             createWallpaperForScreen(screen, videoURL: videoURL)
         }
     }
@@ -184,12 +173,7 @@ class WallpaperManager: NSObject {
     }
     
     deinit {
-        // Remove display change observer
-        NotificationCenter.default.removeObserver(
-            self,
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
+        displayChangeObserver?.cancel()
         cleanupWallpaper()
     }
 }
