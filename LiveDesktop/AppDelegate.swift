@@ -3,8 +3,9 @@ import SwiftUI
 import ServiceManagement
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private let statusBarManager = StatusBarManager()
-    private let wallpaperManager = WallpaperManager()
+    // MARK: - Managers
+    private var statusBarManager: StatusBarManager?
+    private var wallpaperManager: WallpaperManager?
     private var dashboardWindow: NSWindow?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -17,22 +18,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupManagers()
         
         // Start with wallpaper enabled
-        wallpaperManager.enableWallpaper()
+        wallpaperManager?.enableWallpaper()
     }
     
     private func setupManagers() {
         print("🔧 Setting up managers...")
+        
+        // Initialize managers
+        statusBarManager = StatusBarManager()
+        wallpaperManager = WallpaperManager()
+        
         // Configure status bar manager
-        statusBarManager.delegate = self
-        statusBarManager.setupStatusBar()
+        statusBarManager?.delegate = self
+        statusBarManager?.setupStatusBar()
         print("✅ Status bar manager setup complete")
+        
+        // Start loading popular videos in background
+        print("🎬 Starting background video loading...")
+        PopularsService.shared.loadPopularVideos()
+        print("✅ Popular videos service initialized")
     }
 }
 
 // MARK: - StatusBarManagerDelegate
 extension AppDelegate: StatusBarManagerDelegate {
     var isWallpaperEnabled: Bool {
-        return wallpaperManager.isWallpaperEnabled
+        return wallpaperManager?.isWallpaperEnabled ?? false
     }
     
     var isLaunchAtLoginEnabled: Bool {
@@ -40,7 +51,7 @@ extension AppDelegate: StatusBarManagerDelegate {
     }
     
     func statusBarDidToggleWallpaper() {
-        wallpaperManager.toggleWallpaper()
+        wallpaperManager?.toggleWallpaper()
     }
     
     func statusBarDidToggleLaunchAtLogin() {

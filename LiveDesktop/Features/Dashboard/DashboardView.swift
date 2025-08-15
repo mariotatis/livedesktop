@@ -10,7 +10,7 @@ struct DashboardView: View {
     
     // MARK: - Managers
     @ObservedObject private var displayManager = DisplayManager.shared
-    @StateObject private var popularsService = PopularsService()
+    @ObservedObject private var popularsService = PopularsService.shared
     
     // MARK: - Data
     private let navItems = ["Popular", "Favorites", "Downloads"]
@@ -84,14 +84,9 @@ struct DashboardView: View {
                 print("📺 DashboardView: Auto-selected display: \(selectedDisplay ?? "none")")
             }
             
-            // Load popular videos when view appears
-            print("🎥 DashboardView: Checking if videos are empty - count: \(popularsService.videos.count)")
-            if popularsService.videos.isEmpty {
-                print("🚀 DashboardView: Calling popularsService.loadPopularVideos()")
-                popularsService.loadPopularVideos()
-            } else {
-                print("⚠️ DashboardView: Videos already loaded, skipping API call")
-            }
+            // Videos are now loaded at app startup, no need to load here
+            print("🎥 DashboardView: Videos loaded at startup - count: \(popularsService.videos.count)")
+            print("🔄 DashboardView: Filtered videos count: \(filteredVideos.count)")
         }
         .onChange(of: displayManager.availableDisplays) { displays in
             // Handle display changes - ensure selected display is still valid

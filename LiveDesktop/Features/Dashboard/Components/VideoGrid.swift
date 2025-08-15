@@ -21,20 +21,25 @@ struct VideoGrid: View {
                         }
                     }
                     .onAppear {
-                        // Trigger load more when reaching the last few items
-                        if video.id == filteredVideos.last?.id {
+                        // Trigger load more when reaching one of the last 3 items
+                        if let lastIndex = filteredVideos.lastIndex(where: { $0.id == video.id }),
+                           lastIndex >= filteredVideos.count - 3 {
+                            print("🔄 VideoGrid: Near end (item \(lastIndex + 1)/\(filteredVideos.count)), triggering load more")
                             onLoadMore()
                         }
                     }
                 }
                 
                 // Loading indicator at bottom
-                if isLoading {
+                if isLoading && !filteredVideos.isEmpty {
                     HStack {
                         Spacer()
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(1.2)
+                        Text("Loading more...")
+                            .foregroundColor(.gray)
+                            .padding(.leading, 8)
                         Spacer()
                     }
                     .padding(.vertical, 20)
