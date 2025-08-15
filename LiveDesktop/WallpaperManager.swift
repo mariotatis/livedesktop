@@ -130,6 +130,10 @@ class WallpaperManager: NSObject {
         player.isMuted = true
         player.volume = 0.0
         
+        // Prevent automatic pause when app loses focus
+        player.automaticallyWaitsToMinimizeStalling = false
+        player.preventsDisplaySleepDuringVideoPlayback = false
+        
         return player
     }
     

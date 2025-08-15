@@ -5,6 +5,7 @@ protocol StatusBarManagerDelegate: AnyObject {
     func statusBarDidToggleWallpaper()
     func statusBarDidToggleLaunchAtLogin()
     func statusBarDidRequestQuit()
+    func statusBarDidOpenDashboard()
     var isWallpaperEnabled: Bool { get }
     var isLaunchAtLoginEnabled: Bool { get }
 }
@@ -41,6 +42,18 @@ class StatusBarManager: NSObject {
         )
         titleItem.isEnabled = false
         menu.addItem(titleItem)
+        
+        // Separator
+        menu.addItem(NSMenuItem.separator())
+        
+        // Dashboard option
+        let dashboardItem = NSMenuItem(
+            title: "Dashboard",
+            action: #selector(openDashboard),
+            keyEquivalent: "d"
+        )
+        dashboardItem.target = self
+        menu.addItem(dashboardItem)
         
         // Separator
         menu.addItem(NSMenuItem.separator())
@@ -161,6 +174,10 @@ class StatusBarManager: NSObject {
     @objc private func toggleLaunchAtLogin() {
         delegate?.statusBarDidToggleLaunchAtLogin()
         updateToggleControls()
+    }
+    
+    @objc private func openDashboard() {
+        delegate?.statusBarDidOpenDashboard()
     }
     
     @objc private func quitApp() {
