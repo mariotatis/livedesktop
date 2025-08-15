@@ -15,11 +15,15 @@ struct ActiveDisplayPreview: View {
                     .fill(Color.gray.opacity(0.3))
             }
             .cornerRadius(8)
+            .clipped()
             
-            // Video Player overlay (only show when ready)
-            if let videoURL = URL(string: video.videoURL ?? "") {
+            // Video Player overlay (conditionally shown)
+            if let videoURL = URL(string: video.videoURL ?? ""), 
+               !downloadsService.isDownloading(videoId: video.id) {
                 ActiveVideoPlayerView(videoURL: videoURL, videoId: video.id)
                     .cornerRadius(8)
+                    .clipped()
+                    .background(Color.clear)
             }
             
             // Download overlay
@@ -144,10 +148,15 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
         let containerView = NSView()
         containerView.wantsLayer = true
         containerView.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView.layer?.isOpaque = false
         
         let playerView = AVPlayerView()
         playerView.wantsLayer = true
         playerView.layer?.backgroundColor = NSColor.clear.cgColor
+        playerView.layer?.isOpaque = false
+        
+        // Initially hide player until video is ready to avoid black box
+        playerView.alphaValue = 0.0
         
         // Check if we have a local downloaded version first
         let localURL = downloadsService.getLocalVideoURL(videoId: videoId) ?? videoURL
