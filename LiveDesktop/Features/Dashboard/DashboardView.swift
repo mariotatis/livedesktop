@@ -27,120 +27,133 @@ struct DashboardView: View {
         // Switch between Popular, Favorites, and Downloads based on selected nav item
         switch selectedNavItem {
         case "Favorites":
-            let favoriteVideos = favoritesService.getFavoriteVideos(from: popularsService.videos)
-            videos = favoriteVideos.map { $0.videoItem }
+            videos = favoritesService.getFavoriteVideos()
         case "Downloads":
-            let downloadedVideos = downloadsService.getDownloadedVideos(from: popularsService.videos)
-            videos = downloadedVideos.map { $0.videoItem }
+            videos = downloadsService.getDownloadedVideos()
         default: // Popular
             videos = popularsService.videos.map { $0.videoItem }
         }
         
+        // Apply category filter
         let currentFilter = selectedFilterOption ?? "All"
-        let filtered = currentFilter == "All" ? videos : videos.filter { $0.category == currentFilter }
-        if searchText.isEmpty {
-            return filtered
+        let categoryFiltered: [VideoItem]
+        if currentFilter == "All" {
+            categoryFiltered = videos
+        } else {
+            categoryFiltered = videos.filter { $0.category == currentFilter }
         }
-        return filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) || $0.author.localizedCaseInsensitiveContains(searchText) }
+        
+        // Apply search filter
+        if searchText.isEmpty {
+            return categoryFiltered
+        }
+        
+        let searchFiltered = categoryFiltered.filter { video in
+            let titleMatch = video.title.localizedCaseInsensitiveContains(searchText)
+            let authorMatch = video.author.localizedCaseInsensitiveContains(searchText)
+            return titleMatch || authorMatch
+        }
+        
+        return searchFiltered
     }
     
     var body: some View {
-        HStack(spacing: 0) {
-            // Left Panel
-            LeftPanel(
-                selectedNavItem: $selectedNavItem,
-                selectedDisplay: $selectedDisplay,
-                mirrorDisplays: $mirrorDisplays,
-                selectedVideo: $selectedVideo,
-                navItems: navItems,
-                displays: displayManager.getDisplayNames()
-            )
-            .frame(width: 280)
-            
-            // Main Content Area
-            VStack(spacing: 0) {
-                // Search and Filter Panel
-                SearchAndFilterPanel(
-                    searchText: $searchText,
-                    selectedFilterOption: $selectedFilterOption,
-                    filterOptions: filterOptions
-                )
-                
-                // Video Grid
-                if popularsService.videos.isEmpty && popularsService.isLoading {
-                    // Main loading state
-                    VStack {
-                        Spacer()
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
-                        Text("Loading videos...")
-                            .foregroundColor(.gray)
-                            .padding(.top, 16)
-                        Spacer()
-                    }
-                } else {
-                    VideoGrid(
-                        filteredVideos: filteredVideos,
-                        likedVideos: .constant(favoritesService.favoriteVideoIds),
-                        isLoading: popularsService.isLoading,
-                        selectedVideo: $selectedVideo,
-                        onLoadMore: {
-                            if selectedNavItem == "Popular" {
-                                popularsService.loadNextPage()
-                            }
-                        }
-                    )
-                    .overlay(
-                        // Status message popups
-                        VStack {
-                            if downloadsService.showDeleteMessage {
-                                Text(downloadsService.deleteMessage)
-                                    .padding()
-                                    .background(Color.black.opacity(0.8))
-                                    .foregroundColor(.white)
-                                    .cornerRadius(8)
-                                    .transition(.opacity)
-                            }
-                            
-                            if wallpaperService.showWallpaperMessage {
-                                Text(wallpaperService.wallpaperMessage)
-                                    .padding()
-                                    .background(Color.black.opacity(0.8))
-                                    .foregroundColor(.white)
-                                    .cornerRadius(8)
-                                    .transition(.opacity)
-                            }
-                            Spacer()
-                        }
-                        .animation(.easeInOut(duration: 0.3), value: downloadsService.showDeleteMessage || wallpaperService.showWallpaperMessage)
-                    )
+        let leftPanel = LeftPanel(
+            selectedNavItem: $selectedNavItem,
+            selectedDisplay: $selectedDisplay,
+            mirrorDisplays: $mirrorDisplays,
+            selectedVideo: $selectedVideo,
+            navItems: navItems,
+            displays: displayManager.getDisplayNames()
+        )
+        .frame(width: 280)
+        
+        let searchPanel = SearchAndFilterPanel(
+            searchText: $searchText,
+            selectedFilterOption: $selectedFilterOption,
+            filterOptions: filterOptions
+        )
+        
+        let loadingView = VStack {
+            Spacer()
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .scaleEffect(1.5)
+            Text("Loading videos...")
+                .foregroundColor(.gray)
+                .padding(.top, 16)
+            Spacer()
+        }
+        
+        let videoGridView = VideoGrid(
+            filteredVideos: filteredVideos,
+            likedVideos: .constant(Set(favoritesService.favoriteVideos.map { $0.id })),
+            isLoading: popularsService.isLoading,
+            selectedVideo: $selectedVideo,
+            onLoadMore: {
+                if selectedNavItem == "Popular" {
+                    PopularsService.shared.loadNextPage()
                 }
             }
-            .background(Color(hex: "#1f1f1f"))
+        )
+        
+        let statusOverlay = VStack {
+            if downloadsService.showDeleteMessage {
+                Text(downloadsService.deleteMessage)
+                    .padding()
+                    .background(Color.black.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                    .transition(.opacity)
+            }
+            
+            if wallpaperService.showWallpaperMessage {
+                Text(wallpaperService.wallpaperMessage)
+                    .padding()
+                    .background(Color.black.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                    .transition(.opacity)
+            }
+            Spacer()
+        }
+        .animation(.easeInOut(duration: 0.3), value: downloadsService.showDeleteMessage || wallpaperService.showWallpaperMessage)
+        
+        let mainContent = VStack(spacing: 0) {
+            searchPanel
+            
+            if popularsService.videos.isEmpty && popularsService.isLoading {
+                loadingView
+            } else {
+                videoGridView.overlay(statusOverlay)
+            }
+        }
+        .background(Color(hex: "#1f1f1f"))
+        
+        return HStack(spacing: 0) {
+            leftPanel
+            mainContent
         }
         .background(Color(hex: "#1f1f1f"))
         .frame(minWidth: 1000, minHeight: 700)
         .onAppear {
             // Load saved settings
             mirrorDisplays = wallpaperService.getMirrorDisplays()
-            if let savedDisplay = wallpaperService.getSelectedDisplay() {
-                selectedDisplay = savedDisplay
-                // Load the video for this display
-                loadVideoForCurrentDisplay()
-            } else if selectedDisplay == nil && !displayManager.availableDisplays.isEmpty {
-                selectedDisplay = displayManager.availableDisplays.first?.name
-                loadVideoForCurrentDisplay()
+            selectedDisplay = wallpaperService.getSelectedDisplay()
+            
+            // Load video for current display
+            if let display = selectedDisplay {
+                loadVideoForDisplay(display)
+            }
+            
+            // Load videos if needed
+            if popularsService.videos.isEmpty {
+                PopularsService.shared.loadPopularVideos()
             }
         }
-        .onChange(of: selectedDisplay) { newDisplay in
-            // When display changes, save the selection but don't override user's current video choice
-            if let displayName = newDisplay {
-                wallpaperService.saveSelectedDisplay(displayName)
-                // Only load saved video if no video is currently selected by user
-                if selectedVideo == nil {
-                    loadVideoForDisplay(displayName)
-                }
+        .onChange(of: selectedDisplay) { oldValue, newValue in
+            if let newDisplay = newValue, newDisplay != oldValue {
+                loadVideoForDisplay(newDisplay)
             }
         }
         .onChange(of: displayManager.availableDisplays) { displays in

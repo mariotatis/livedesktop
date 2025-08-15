@@ -56,7 +56,7 @@ struct ActiveDisplayPreview: View {
                                 
                                 if let popularVideo = popularsService.videos.first(where: { String($0.id) == video.id }) {
                                     print("✅ ActiveDisplayPreview: Found video in PopularsService, HD URL: \(popularVideo.videoFileHd)")
-                                    downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+                                    downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
                                 } else {
                                     print("❌ ActiveDisplayPreview: Video \(video.id) not found in PopularsService")
                                     print("🔍 ActiveDisplayPreview: Available video IDs: \(popularsService.videos.map { String($0.id) })")

@@ -4,48 +4,51 @@ import Combine
 class FavoritesService: ObservableObject {
     static let shared = FavoritesService()
     
-    @Published var favoriteVideoIds: Set<String> = []
+    @Published var favoriteVideos: [VideoItem] = []
     
     private let userDefaults = UserDefaults.standard
     private let favoritesKey = "LiveDesktop_FavoriteVideos"
     
     private init() {
         loadFavorites()
-        print("🎯 FavoritesService: Initialized with \(favoriteVideoIds.count) favorites")
+        print("🎯 FavoritesService: Initialized with \(favoriteVideos.count) favorites")
     }
     
     private func loadFavorites() {
-        if let savedFavorites = userDefaults.array(forKey: favoritesKey) as? [String] {
-            favoriteVideoIds = Set(savedFavorites)
+        if let data = userDefaults.data(forKey: favoritesKey),
+           let savedFavorites = try? JSONDecoder().decode([VideoItem].self, from: data) {
+            favoriteVideos = savedFavorites
         }
     }
     
     private func saveFavorites() {
-        userDefaults.set(Array(favoriteVideoIds), forKey: favoritesKey)
-        print("💾 FavoritesService: Saved \(favoriteVideoIds.count) favorites to UserDefaults")
+        if let data = try? JSONEncoder().encode(favoriteVideos) {
+            userDefaults.set(data, forKey: favoritesKey)
+            print("💾 FavoritesService: Saved \(favoriteVideos.count) favorites to UserDefaults")
+        }
     }
     
-    func toggleFavorite(videoId: String) {
-        if favoriteVideoIds.contains(videoId) {
-            favoriteVideoIds.remove(videoId)
-            print("💔 FavoritesService: Removed favorite - \(videoId)")
+    func toggleFavorite(video: VideoItem) {
+        if let index = favoriteVideos.firstIndex(where: { $0.id == video.id }) {
+            favoriteVideos.remove(at: index)
+            print("💔 FavoritesService: Removed favorite - \(video.id)")
         } else {
-            favoriteVideoIds.insert(videoId)
-            print("❤️ FavoritesService: Added favorite - \(videoId)")
+            favoriteVideos.append(video)
+            print("❤️ FavoritesService: Added favorite - \(video.id)")
         }
         saveFavorites()
     }
     
     func isFavorite(videoId: String) -> Bool {
-        return favoriteVideoIds.contains(videoId)
+        return favoriteVideos.contains { $0.id == videoId }
     }
     
-    func getFavoriteVideos(from allVideos: [PopularVideo]) -> [PopularVideo] {
-        return allVideos.filter { favoriteVideoIds.contains(String($0.id)) }
+    func getFavoriteVideos() -> [VideoItem] {
+        return favoriteVideos
     }
     
     func clearAllFavorites() {
-        favoriteVideoIds.removeAll()
+        favoriteVideos.removeAll()
         saveFavorites()
         print("🗑️ FavoritesService: Cleared all favorites")
     }

@@ -11,12 +11,14 @@ class DownloadsService: NSObject, ObservableObject {
     static let shared = DownloadsService()
     
     @Published var downloadedVideoIds: Set<String> = []
+    @Published var downloadedVideos: [VideoItem] = []
     @Published var downloadProgress: [String: DownloadProgress] = [:]
     @Published var showDeleteMessage = false
     @Published var deleteMessage = ""
     
     private let userDefaults = UserDefaults.standard
     private let downloadedVideosKey = "LiveDesktop_DownloadedVideos"
+    private let downloadedVideosDataKey = "LiveDesktop_DownloadedVideosData"
     private var downloadTasks: [String: URLSessionDownloadTask] = [:]
     private lazy var urlSession: URLSession = {
         let config = URLSessionConfiguration.default
@@ -33,52 +35,71 @@ class DownloadsService: NSObject, ObservableObject {
     
     // MARK: - Persistence
     private func loadDownloadedVideos() {
+        // Load video IDs (for backward compatibility)
         if let savedDownloads = userDefaults.array(forKey: downloadedVideosKey) as? [String] {
             downloadedVideoIds = Set(savedDownloads)
+        }
+        
+        // Load complete video data
+        if let data = userDefaults.data(forKey: downloadedVideosDataKey),
+           let savedVideos = try? JSONDecoder().decode([VideoItem].self, from: data) {
+            downloadedVideos = savedVideos
         }
     }
     
     private func saveDownloadedVideos() {
         userDefaults.set(Array(downloadedVideoIds), forKey: downloadedVideosKey)
-        print("💾 DownloadsService: Saved \(downloadedVideoIds.count) downloads to UserDefaults")
+        
+        if let data = try? JSONEncoder().encode(downloadedVideos) {
+            userDefaults.set(data, forKey: downloadedVideosDataKey)
+        }
+        
+        print("💾 DownloadsService: Saved \(downloadedVideoIds.count) downloaded videos to UserDefaults")
     }
     
     // MARK: - Download Management
-    func downloadVideo(videoId: String, hdURL: String) {
-        guard !isDownloaded(videoId: videoId) && !isDownloading(videoId: videoId) else {
-            print("⚠️ DownloadsService: Video \(videoId) already downloaded or downloading")
+    func downloadVideo(video: VideoItem, hdURL: String) {
+        guard !isDownloaded(videoId: video.id) && !isDownloading(videoId: video.id) else {
+            print("⚠️ DownloadsService: Video \(video.id) already downloaded or downloading")
             return
         }
         
         guard !hdURL.isEmpty else {
-            print("❌ DownloadsService: Empty URL for video \(videoId)")
+            print("❌ DownloadsService: Empty URL for video \(video.id)")
             return
         }
         
         guard let url = URL(string: hdURL) else {
-            print("❌ DownloadsService: Invalid URL for video \(videoId): '\(hdURL)'")
+            print("❌ DownloadsService: Invalid URL for video \(video.id): '\(hdURL)'")
             return
         }
         
-        print("📥 DownloadsService: Starting download for video \(videoId)")
-        print("🔗 DownloadsService: URL: \(hdURL)")
+        print("🚀 DownloadsService: Starting download for video \(video.id)")
+        print("🔗 DownloadsService: HD URL: \(hdURL)")
         
-        // Initialize progress
-        DispatchQueue.main.async {
-            self.downloadProgress[videoId] = DownloadProgress(videoId: videoId, progress: 0.0, isCompleted: false)
+        // Create download progress entry
+        downloadProgress[video.id] = DownloadProgress(videoId: video.id, progress: 0.0, isCompleted: false)
+        
+        // Store video data for later use
+        if !downloadedVideos.contains(where: { $0.id == video.id }) {
+            var updatedVideo = video
+            // Update with HD URL for future reference
+            updatedVideo = VideoItem(
+                id: video.id,
+                title: video.title,
+                author: video.author,
+                category: video.category,
+                imageURL: video.imageURL,
+                videoURL: video.videoURL,
+                videoURLHD: hdURL
+            )
+            downloadedVideos.append(updatedVideo)
         }
         
-        do {
-            let task = urlSession.downloadTask(with: url)
-            downloadTasks[videoId] = task
-            task.resume()
-            print("✅ DownloadsService: Download task created and resumed for video \(videoId)")
-        } catch {
-            print("❌ DownloadsService: Failed to create download task for video \(videoId): \(error)")
-            DispatchQueue.main.async {
-                self.downloadProgress.removeValue(forKey: videoId)
-            }
-        }
+        // Start download task
+        let downloadTask = urlSession.downloadTask(with: url)
+        downloadTasks[video.id] = downloadTask
+        downloadTask.resume()
     }
     
     func deleteVideo(videoId: String) {
@@ -94,6 +115,7 @@ class DownloadsService: NSObject, ObservableObject {
             
             DispatchQueue.main.async {
                 self.downloadedVideoIds.remove(videoId)
+                self.downloadedVideos.removeAll { $0.id == videoId }
                 self.downloadProgress.removeValue(forKey: videoId)
                 self.saveDownloadedVideos()
                 
@@ -124,8 +146,8 @@ class DownloadsService: NSObject, ObservableObject {
         return downloadProgress[videoId]?.progress ?? 0.0
     }
     
-    func getDownloadedVideos(from allVideos: [PopularVideo]) -> [PopularVideo] {
-        return allVideos.filter { downloadedVideoIds.contains(String($0.id)) }
+    func getDownloadedVideos() -> [VideoItem] {
+        return downloadedVideos
     }
     
     // MARK: - File Management

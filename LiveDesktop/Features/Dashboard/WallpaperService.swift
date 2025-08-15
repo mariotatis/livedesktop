@@ -133,7 +133,7 @@ class WallpaperService: ObservableObject {
         }
         
         // Start download
-        downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+        downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
         
         // Monitor download progress
         monitorDownloadProgress(video: video, selectedDisplay: selectedDisplay, mirrorDisplays: mirrorDisplays)

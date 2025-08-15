@@ -131,7 +131,7 @@ struct LazyVideoCard: View {
                                     } else {
                                         // Get HD URL from PopularsService
                                         if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
-                                            downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+                                            downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
                                         }
                                     }
                                 } label: {
@@ -146,7 +146,7 @@ struct LazyVideoCard: View {
                                 
                                 // Like Button
                                 Button {
-                                    favoritesService.toggleFavorite(videoId: video.id)
+                                    favoritesService.toggleFavorite(video: video)
                                 } label: {
                                     Image(systemName: favoritesService.isFavorite(videoId: video.id) ? "heart.fill" : "heart")
                                         .foregroundColor(favoritesService.isFavorite(videoId: video.id) ? .red : .white)
