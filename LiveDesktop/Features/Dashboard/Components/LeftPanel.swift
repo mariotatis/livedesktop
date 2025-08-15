@@ -1,8 +1,10 @@
 import SwiftUI
+import AVKit
 
 struct LeftPanel: View {
     @Binding var selectedNavItem: String
     @Binding var selectedDisplay: String?
+    @Binding var mirrorDisplays: Bool
     
     let navItems: [String]
     let displays: [String]
@@ -38,28 +40,33 @@ struct LeftPanel: View {
                 }
                 .padding(.horizontal, 20)
                 
-                // Display Dropdown
-                DropDownPicker(
-                    selection: $selectedDisplay,
-                    options: displays,
-                    maxWidth: 240,
-                    placeholder: "Select Display"
-                )
+                // Mirror Displays Toggle
+                HStack {
+                    Text("Mirror Displays")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Toggle("", isOn: $mirrorDisplays)
+                        .toggleStyle(SwitchToggleStyle())
+                        .scaleEffect(0.8)
+                }
                 .padding(.horizontal, 20)
                 
-                // Preview Window
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LinearGradient(
-                        gradient: Gradient(colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.4)]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(height: 120)
-                    .overlay(
-                        Text("Aurora Preview")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
+                // Display Dropdown (hidden when mirroring)
+                if !mirrorDisplays {
+                    DropDownPicker(
+                        selection: $selectedDisplay,
+                        options: displays,
+                        maxWidth: 240,
+                        placeholder: "Select Display"
                     )
+                    .padding(.horizontal, 20)
+                }
+                
+                // Preview Window
+                LoopingVideoPlayer(videoFileName: "video")
+                    .frame(height: 120)
+                    .cornerRadius(8)
                     .padding(.horizontal, 20)
                 
                 // Set Live Desktop Button

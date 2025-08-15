@@ -6,6 +6,7 @@ struct DashboardView: View {
     @State private var selectedDisplay: String? = nil
     @State private var searchText = ""
     @State private var selectedFilterOption: String? = "All"
+    @State private var mirrorDisplays = false
     
     // MARK: - Managers
     @ObservedObject private var displayManager = DisplayManager.shared
@@ -47,6 +48,7 @@ struct DashboardView: View {
             LeftPanel(
                 selectedNavItem: $selectedNavItem,
                 selectedDisplay: $selectedDisplay,
+                mirrorDisplays: $mirrorDisplays,
                 navItems: navItems,
                 displays: displayManager.getDisplayNames()
             )

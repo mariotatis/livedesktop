@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AC1C50012E4FBB0B00B0A488 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = AC1C50002E4FBB0B00B0A488 /* Kingfisher */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		AC1C4FF22E4F8F0100B0A488 /* LiveDesktop.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiveDesktop.entitlements; sourceTree = "<group>"; };
 		AC3039832E4D6C370032897F /* LiveDesktop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveDesktop.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -24,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC1C50012E4FBB0B00B0A488 /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,6 +72,7 @@
 			);
 			name = LiveDesktop;
 			packageProductDependencies = (
+				AC1C50002E4FBB0B00B0A488 /* Kingfisher */,
 			);
 			productName = LiveDesktop;
 			productReference = AC3039832E4D6C370032897F /* LiveDesktop.app */;
@@ -97,6 +103,7 @@
 			mainGroup = AC30397A2E4D6C370032897F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				AC1C4FFF2E4FBB0B00B0A488 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AC3039842E4D6C370032897F /* Products */;
@@ -359,6 +366,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AC1C4FFF2E4FBB0B00B0A488 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AC1C50002E4FBB0B00B0A488 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC1C4FFF2E4FBB0B00B0A488 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AC30397B2E4D6C370032897F /* Project object */;
 }
