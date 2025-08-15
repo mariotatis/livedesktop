@@ -1,5 +1,6 @@
 import Cocoa
 import SwiftUI
+import Kingfisher
 import ServiceManagement
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,10 +10,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var dashboardWindow: NSWindow?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("🚀 APP LAUNCHED - Console is working!")
         
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
+        
+        // Configure Kingfisher cache
+        configureImageCache()
         
         // Setup managers
         setupManagers()
@@ -22,7 +25,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func setupManagers() {
-        print("🔧 Setting up managers...")
         
         // Initialize managers
         statusBarManager = StatusBarManager()
@@ -31,12 +33,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Configure status bar manager
         statusBarManager?.delegate = self
         statusBarManager?.setupStatusBar()
-        print("✅ Status bar manager setup complete")
         
         // Start loading popular videos in background
-        print("🎬 Starting background video loading...")
         PopularsService.shared.loadPopularVideos()
-        print("✅ Popular videos service initialized")
     }
 }
 
@@ -124,5 +123,30 @@ extension AppDelegate: NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         // Always allow window to close
         return true
+    }
+    
+    // MARK: - Image Cache Configuration
+    private func configureImageCache() {
+        
+        // Configure memory cache (100MB)
+        KingfisherManager.shared.cache.memoryStorage.config.totalCostLimit = 100 * 1024 * 1024
+        
+        // Configure disk cache (500MB)
+        KingfisherManager.shared.cache.diskStorage.config.sizeLimit = 500 * 1024 * 1024
+        
+        // Set cache expiration (7 days)
+        KingfisherManager.shared.cache.diskStorage.config.expiration = .days(7)
+        
+        // Optimize for smooth scrolling with lazy loading
+        KingfisherManager.shared.downloader.downloadTimeout = 10.0
+        ImageCache.default.memoryStorage.config.countLimit = 200
+        
+        // Reduce processing queue for smoother performance
+        KingfisherManager.shared.defaultOptions = [
+            .processor(DownsamplingImageProcessor(size: CGSize(width: 400, height: 225))),
+            .scaleFactor(NSScreen.main?.backingScaleFactor ?? 2.0),
+            .cacheOriginalImage
+        ]
+        
     }
 }

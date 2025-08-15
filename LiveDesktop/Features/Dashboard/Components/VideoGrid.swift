@@ -10,7 +10,7 @@ struct VideoGrid: View {
         ScrollView {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 32), count: 3), spacing: 32) {
                 ForEach(filteredVideos) { video in
-                    VideoCard(
+                    LazyVideoCard(
                         video: video,
                         isLiked: likedVideos.contains(video.id)
                     ) { videoId in
@@ -21,11 +21,13 @@ struct VideoGrid: View {
                         }
                     }
                     .onAppear {
-                        // Trigger load more when reaching one of the last 3 items
+                        // Trigger load more when reaching one of the last 6 items with debouncing
                         if let lastIndex = filteredVideos.lastIndex(where: { $0.id == video.id }),
-                           lastIndex >= filteredVideos.count - 3 {
-                            print("🔄 VideoGrid: Near end (item \(lastIndex + 1)/\(filteredVideos.count)), triggering load more")
-                            onLoadMore()
+                           lastIndex >= filteredVideos.count - 6 {
+                            // Debounce the load more call to prevent multiple rapid calls
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                onLoadMore()
+                            }
                         }
                     }
                 }
@@ -54,77 +56,98 @@ struct VideoGrid: View {
     }
 }
 
-struct VideoCard: View {
+struct LazyVideoCard: View {
     let video: VideoItem
     let isLiked: Bool
     let onLike: (String) -> Void
     
     @ObservedObject private var favoritesService = FavoritesService.shared
     @ObservedObject private var downloadsService = DownloadsService.shared
+    @State private var hasLoaded = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Video Preview
+            // Video Preview - Load once and keep loaded
             ZStack {
-                HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL, videoId: video.id)
+                // Always maintain the frame size
+                Rectangle()
+                    .fill(Color.clear)
                     .aspectRatio(16/9, contentMode: .fit)
-                    .cornerRadius(12)
                 
-                // Download Progress Bar
-                if downloadsService.isDownloading(videoId: video.id) {
-                    VStack {
-                        Spacer()
-                        ProgressView(value: downloadsService.getDownloadProgress(videoId: video.id))
-                            .progressViewStyle(LinearProgressViewStyle(tint: .blue))
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(4)
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 8)
-                    }
+                if hasLoaded {
+                    HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL, videoId: video.id)
+                        .aspectRatio(16/9, contentMode: .fit)
+                        .cornerRadius(12)
+                } else {
+                    // Placeholder while not loaded
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .aspectRatio(16/9, contentMode: .fit)
+                        .cornerRadius(12)
+                        .overlay(
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                        )
                 }
-                
-                // Action Buttons
-                VStack {
-                    HStack {
-                        Spacer()
-                        
-                        // Download/Delete Button
-                        Button {
-                            if downloadsService.isDownloaded(videoId: video.id) {
-                                downloadsService.deleteVideo(videoId: video.id)
-                            } else {
-                                // Get HD URL from PopularsService
-                                if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
-                                    downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
-                                }
-                            }
-                        } label: {
-                            Image(systemName: downloadsService.isDownloaded(videoId: video.id) ? "trash" : "arrow.down")
-                                .foregroundColor(.white)
-                                .font(.system(size: 14, weight: .medium))
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(10)
-                        
-                        // Like Button
-                        Button {
-                            favoritesService.toggleFavorite(videoId: video.id)
-                        } label: {
-                            Image(systemName: favoritesService.isFavorite(videoId: video.id) ? "heart.fill" : "heart")
-                                .foregroundColor(favoritesService.isFavorite(videoId: video.id) ? .red : .white)
-                                .font(.system(size: 14, weight: .medium))
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(10)
-                    }
-                    Spacer()
-                }
-                .padding(12)
             }
+            .overlay(
+                ZStack {
+                    // Download Progress Bar
+                    if downloadsService.isDownloading(videoId: video.id) {
+                        VStack {
+                            Spacer()
+                            ProgressView(value: downloadsService.getDownloadProgress(videoId: video.id))
+                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(4)
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 8)
+                        }
+                    }
+                    
+                    // Action Buttons
+                    VStack {
+                        HStack {
+                            Spacer()
+                            
+                            // Download/Delete Button
+                            Button {
+                                if downloadsService.isDownloaded(videoId: video.id) {
+                                    downloadsService.deleteVideo(videoId: video.id)
+                                } else {
+                                    // Get HD URL from PopularsService
+                                    if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
+                                        downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: downloadsService.isDownloaded(videoId: video.id) ? "trash" : "arrow.down")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(10)
+                            
+                            // Like Button
+                            Button {
+                                favoritesService.toggleFavorite(videoId: video.id)
+                            } label: {
+                                Image(systemName: favoritesService.isFavorite(videoId: video.id) ? "heart.fill" : "heart")
+                                    .foregroundColor(favoritesService.isFavorite(videoId: video.id) ? .red : .white)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(10)
+                        }
+                        Spacer()
+                    }
+                    .padding(12)
+                }
+            )
             
             // Author
             HStack {
@@ -140,28 +163,38 @@ struct VideoCard: View {
         }
         .background(Color.clear)
         .cornerRadius(12)
+        .onAppear {
+            // Load once and keep loaded for caching
+            if !hasLoaded {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    hasLoaded = true
+                }
+            }
+        }
     }
     
-    private func colorForVideo(_ title: String) -> Color {
-        switch title {
-        case "Aurora":
-            return Color.purple
-        case "Cyberpunk":
-            return Color.pink
-        case "Swirls":
-            return Color.gray
-        case "Sunset":
-            return Color.orange
-        case "Highway":
-            return Color.blue
-        case "Fluid":
-            return Color.cyan
-        case "Rainy":
-            return Color.indigo
-        case "Galaxy":
-            return Color.purple
-        default:
-            return Color.gray
-        }
+}
+
+// MARK: - Helper Functions
+private func colorForVideo(_ title: String) -> Color {
+    switch title {
+    case "Aurora":
+        return Color.purple
+    case "Cyberpunk":
+        return Color.pink
+    case "Swirls":
+        return Color.gray
+    case "Sunset":
+        return Color.orange
+    case "Highway":
+        return Color.blue
+    case "Fluid":
+        return Color.cyan
+    case "Rainy":
+        return Color.indigo
+    case "Galaxy":
+        return Color.purple
+    default:
+        return Color.gray
     }
 }

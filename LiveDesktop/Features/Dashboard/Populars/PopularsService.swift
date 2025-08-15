@@ -12,17 +12,15 @@ class PopularsService: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
-        print("🎯 PopularsService: Initialized as singleton")
+        // Initialized as singleton
     }
     
     func loadPopularVideos(page: Int = 1, reset: Bool = false) {
         guard !isLoading else { 
-            print("⚠️ PopularsService: Already loading, skipping request")
             return 
         }
         
         guard hasMorePages || reset else {
-            print("⚠️ PopularsService: No more pages available")
             return
         }
         
@@ -32,11 +30,9 @@ class PopularsService: ObservableObject {
             hasMorePages = true
         }
         
-        print("🚀 PopularsService: Starting to load videos for page \(page)")
         isLoading = true
         
         let parameters = ["page": page]
-        print("📋 PopularsService: Parameters - \(parameters)")
         
         NetworkManager.shared.request(
             endpoint: APIConstants.Endpoints.popularVideos,
@@ -47,18 +43,12 @@ class PopularsService: ObservableObject {
         .sink(
             receiveCompletion: { [weak self] completion in
                 self?.isLoading = false
-                if case .failure(let error) = completion {
-                    print("Error loading popular videos: \(error)")
-                }
             },
             receiveValue: { [weak self] response in
                 guard let self = self else { return }
                 
-                print("🔍 PopularsService: API Response - page: \(response.data.page), videos: \(response.data.videos.count), total: \(response.data.totalResults), perPage: \(response.data.perPage)")
-                
                 // Filter for landscape videos only (width > height)
                 let landscapeVideos = response.data.videos.filter { $0.width > $0.height }
-                print("🎬 PopularsService: Filtered to \(landscapeVideos.count) landscape videos from \(response.data.videos.count) total")
                 
                 if reset {
                     self.videos = landscapeVideos
@@ -71,24 +61,26 @@ class PopularsService: ObservableObject {
                 // Check if there are more pages - use original response count for pagination logic
                 let totalPages = Int(ceil(Double(response.data.totalResults) / Double(response.data.perPage)))
                 self.hasMorePages = self.currentPage < totalPages
-                
-                print("🔍 PopularsService: Pagination check - currentPage: \(self.currentPage), totalPages: \(totalPages), hasMorePages: \(self.hasMorePages)")
-                
-                print("📊 PopularsService: Total landscape videos now: \(self.videos.count)")
-                print("📊 PopularsService: Current page: \(self.currentPage), Total pages: \(totalPages)")
-                print("📊 PopularsService: Original response: \(response.data.videos.count), Per page: \(response.data.perPage)")
-                print("📊 PopularsService: Has more pages: \(self.hasMorePages)")
             }
         )
         .store(in: &cancellables)
     }
     
+    private var lastLoadTime: Date = Date.distantPast
+    private let loadThrottleInterval: TimeInterval = 1.0 // 1 second throttle
+    
     func loadNextPage() {
+        let now = Date()
         guard hasMorePages && !isLoading else { 
-            print("⚠️ PopularsService: Cannot load next page - hasMorePages: \(hasMorePages), isLoading: \(isLoading)")
             return 
         }
-        print("📄 PopularsService: Loading next page \(currentPage + 1)")
+        
+        // Throttle rapid pagination calls
+        guard now.timeIntervalSince(lastLoadTime) >= loadThrottleInterval else {
+            return
+        }
+        
+        lastLoadTime = now
         loadPopularVideos(page: currentPage + 1)
     }
     

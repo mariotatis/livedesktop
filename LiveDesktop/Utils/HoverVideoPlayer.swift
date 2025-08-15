@@ -37,8 +37,11 @@ struct HoverVideoPlayer: View {
     var body: some View {
         ZStack {
             // Thumbnail image (always visible as background)
-            AsyncImageView(url: imageURL)
-                .opacity(shouldShowVideo && isVideoReady ? 0.0 : 1.0)
+            CachedAsyncImage(url: imageURL, contentMode: .fill) {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+            }
+            .opacity(shouldShowVideo && isVideoReady ? 0.0 : 1.0)
             
             // Video player (shown on hover after delay)
             if shouldShowVideo, let player = player {
@@ -49,7 +52,7 @@ struct HoverVideoPlayer: View {
                         // Wait for video to be ready before playing
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             player.play()
-                            withAnimation(.easeInOut(duration: 0.4)) {
+                            withAnimation(.easeInOut(duration: 1.0)) {
                                 isVideoReady = true
                             }
                         }
@@ -66,7 +69,7 @@ struct HoverVideoPlayer: View {
             
             if hovering {
                 // Start timer for 1 second delay
-                hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
+                hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
                     if isHovering {
                         startVideoPlayback()
                     }
