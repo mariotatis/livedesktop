@@ -60,25 +60,46 @@ struct VideoCard: View {
     let onLike: (String) -> Void
     
     @ObservedObject private var favoritesService = FavoritesService.shared
+    @ObservedObject private var downloadsService = DownloadsService.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Video Preview
             ZStack {
-                HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL)
+                HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL, videoId: video.id)
                     .aspectRatio(16/9, contentMode: .fit)
                     .cornerRadius(12)
+                
+                // Download Progress Bar
+                if downloadsService.isDownloading(videoId: video.id) {
+                    VStack {
+                        Spacer()
+                        ProgressView(value: downloadsService.getDownloadProgress(videoId: video.id))
+                            .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(4)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
+                    }
+                }
                 
                 // Action Buttons
                 VStack {
                     HStack {
                         Spacer()
                         
-                        // Download Button
+                        // Download/Delete Button
                         Button {
-                            // Download action
+                            if downloadsService.isDownloaded(videoId: video.id) {
+                                downloadsService.deleteVideo(videoId: video.id)
+                            } else {
+                                // Get HD URL from PopularsService
+                                if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
+                                    downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+                                }
+                            }
                         } label: {
-                            Image(systemName: "arrow.down")
+                            Image(systemName: downloadsService.isDownloaded(videoId: video.id) ? "trash" : "arrow.down")
                                 .foregroundColor(.white)
                                 .font(.system(size: 14, weight: .medium))
                                 .frame(width: 28, height: 28)

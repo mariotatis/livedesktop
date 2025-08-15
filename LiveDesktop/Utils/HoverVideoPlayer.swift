@@ -26,6 +26,7 @@ struct VideoPlayerView: NSViewRepresentable {
 struct HoverVideoPlayer: View {
     let imageURL: String?
     let videoURL: String?
+    let videoId: String?
     
     @State private var isHovering = false
     @State private var hoverTimer: Timer?
@@ -80,12 +81,22 @@ struct HoverVideoPlayer: View {
     }
     
     private func startVideoPlayback() {
-        guard let videoURL = videoURL, let url = URL(string: videoURL) else { return }
-        
-        if player == nil {
-            player = AVPlayer(url: url)
-            player?.isMuted = true // Mute to avoid audio conflicts
-            player?.volume = 0.0
+        // Check if video is downloaded locally first
+        if let videoId = videoId,
+           let localURL = DownloadsService.shared.getLocalVideoURL(videoId: videoId) {
+            if player == nil {
+                player = AVPlayer(url: localURL)
+                player?.isMuted = true
+                player?.volume = 0.0
+            }
+        } else if let videoURL = videoURL, let url = URL(string: videoURL) {
+            if player == nil {
+                player = AVPlayer(url: url)
+                player?.isMuted = true
+                player?.volume = 0.0
+            }
+        } else {
+            return
         }
         
         withAnimation(.easeInOut(duration: 0.3)) {

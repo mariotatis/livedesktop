@@ -11,6 +11,7 @@ struct DashboardView: View {
     @ObservedObject private var displayManager = DisplayManager.shared
     @ObservedObject private var popularsService = PopularsService.shared
     @ObservedObject private var favoritesService = FavoritesService.shared
+    @ObservedObject private var downloadsService = DownloadsService.shared
     
     // MARK: - Data
     private let navItems = ["Popular", "Favorites", "Downloads"]
@@ -20,11 +21,15 @@ struct DashboardView: View {
     private var filteredVideos: [VideoItem] {
         let videos: [VideoItem]
         
-        // Switch between Popular and Favorites based on selected nav item
-        if selectedNavItem == "Favorites" {
+        // Switch between Popular, Favorites, and Downloads based on selected nav item
+        switch selectedNavItem {
+        case "Favorites":
             let favoriteVideos = favoritesService.getFavoriteVideos(from: popularsService.videos)
             videos = favoriteVideos.map { $0.videoItem }
-        } else {
+        case "Downloads":
+            let downloadedVideos = downloadsService.getDownloadedVideos(from: popularsService.videos)
+            videos = downloadedVideos.map { $0.videoItem }
+        default: // Popular
             videos = popularsService.videos.map { $0.videoItem }
         }
         
@@ -79,6 +84,21 @@ struct DashboardView: View {
                                 popularsService.loadNextPage()
                             }
                         }
+                    )
+                    .overlay(
+                        // Delete message popup
+                        VStack {
+                            if downloadsService.showDeleteMessage {
+                                Text(downloadsService.deleteMessage)
+                                    .padding()
+                                    .background(Color.black.opacity(0.8))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                    .transition(.opacity)
+                            }
+                            Spacer()
+                        }
+                        .animation(.easeInOut(duration: 0.3), value: downloadsService.showDeleteMessage)
                     )
                 }
             }
