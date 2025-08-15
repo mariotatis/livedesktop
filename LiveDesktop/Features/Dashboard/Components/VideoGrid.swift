@@ -52,12 +52,12 @@ struct VideoCard: View {
                         } label: {
                             Image(systemName: "arrow.down")
                                 .foregroundColor(.white)
-                                .font(.system(size: 18, weight: .medium))
-                                .frame(width: 32, height: 32)
+                                .font(.system(size: 14, weight: .medium))
+                                .frame(width: 28, height: 28)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .background(Color.black.opacity(0.6))
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                         
                         // Like Button
                         Button {
@@ -65,12 +65,12 @@ struct VideoCard: View {
                         } label: {
                             Image(systemName: isLiked ? "heart.fill" : "heart")
                                 .foregroundColor(isLiked ? .red : .white)
-                                .font(.system(size: 18, weight: .medium))
-                                .frame(width: 32, height: 32)
+                                .font(.system(size: 14, weight: .medium))
+                                .frame(width: 28, height: 28)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .background(Color.black.opacity(0.6))
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                     }
                     Spacer()
                 }
