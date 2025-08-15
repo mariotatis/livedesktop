@@ -17,13 +17,14 @@ struct ActiveDisplayPreview: View {
             .cornerRadius(8)
             .clipped()
             
-            // Video Player overlay (conditionally shown)
-            if let videoURL = URL(string: video.videoURL ?? ""), 
-               !downloadsService.isDownloading(videoId: video.id) {
+            // Video Player overlay (always present but controlled via opacity)
+            if let videoURL = URL(string: video.videoURL ?? "") {
                 ActiveVideoPlayerView(videoURL: videoURL, videoId: video.id)
                     .cornerRadius(8)
                     .clipped()
                     .background(Color.clear)
+                    .opacity(downloadsService.isDownloading(videoId: video.id) ? 0.0 : 1.0)
+                    .animation(.easeInOut(duration: 0.3), value: downloadsService.isDownloading(videoId: video.id))
             }
             
             // Download overlay
@@ -198,8 +199,7 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
     
     func updateNSView(_ nsView: NSView, context: Context) {
         // Update the player when video changes
-        guard let containerView = nsView as? NSView,
-              let playerView = containerView.subviews.first as? AVPlayerView else { return }
+        guard let playerView = nsView.subviews.first as? AVPlayerView else { return }
         
         // Check if we need to update the video
         let localURL = downloadsService.getLocalVideoURL(videoId: videoId) ?? videoURL
@@ -216,7 +216,7 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
             
             // Setup new observer
             let observer = SafePlayerObserver(playerView: playerView, player: newPlayer)
-            objc_setAssociatedObject(containerView, "observer", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(nsView, "observer", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 }
