@@ -7,6 +7,7 @@ struct DashboardView: View {
     @State private var searchText = ""
     @State private var selectedFilterOption: String? = "All"
     @State private var mirrorDisplays = false
+    @State private var selectedVideo: VideoItem? = nil
     
     // MARK: - Managers
     @ObservedObject private var displayManager = DisplayManager.shared
@@ -49,6 +50,7 @@ struct DashboardView: View {
                 selectedNavItem: $selectedNavItem,
                 selectedDisplay: $selectedDisplay,
                 mirrorDisplays: $mirrorDisplays,
+                selectedVideo: $selectedVideo,
                 navItems: navItems,
                 displays: displayManager.getDisplayNames()
             )
@@ -81,6 +83,7 @@ struct DashboardView: View {
                         filteredVideos: filteredVideos,
                         likedVideos: .constant(favoritesService.favoriteVideoIds),
                         isLoading: popularsService.isLoading,
+                        selectedVideo: $selectedVideo,
                         onLoadMore: {
                             if selectedNavItem == "Popular" {
                                 popularsService.loadNextPage()

@@ -4,6 +4,7 @@ struct VideoGrid: View {
     let filteredVideos: [VideoItem]
     @Binding var likedVideos: Set<String>
     let isLoading: Bool
+    @Binding var selectedVideo: VideoItem?
     let onLoadMore: () -> Void
     
     var body: some View {
@@ -12,7 +13,8 @@ struct VideoGrid: View {
                 ForEach(filteredVideos) { video in
                     LazyVideoCard(
                         video: video,
-                        isLiked: likedVideos.contains(video.id)
+                        isLiked: likedVideos.contains(video.id),
+                        selectedVideo: $selectedVideo
                     ) { videoId in
                         if likedVideos.contains(videoId) {
                             likedVideos.remove(videoId)
@@ -59,6 +61,7 @@ struct VideoGrid: View {
 struct LazyVideoCard: View {
     let video: VideoItem
     let isLiked: Bool
+    @Binding var selectedVideo: VideoItem?
     let onLike: (String) -> Void
     
     @ObservedObject private var favoritesService = FavoritesService.shared
@@ -78,6 +81,9 @@ struct LazyVideoCard: View {
                     HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL, videoId: video.id)
                         .aspectRatio(16/9, contentMode: .fit)
                         .cornerRadius(12)
+                        .onTapGesture {
+                            selectedVideo = video
+                        }
                 } else {
                     // Placeholder while not loaded
                     Rectangle()

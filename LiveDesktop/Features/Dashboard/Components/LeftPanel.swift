@@ -5,9 +5,12 @@ struct LeftPanel: View {
     @Binding var selectedNavItem: String
     @Binding var selectedDisplay: String?
     @Binding var mirrorDisplays: Bool
+    @Binding var selectedVideo: VideoItem?
     
     let navItems: [String]
     let displays: [String]
+    
+    @ObservedObject private var downloadsService = DownloadsService.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -64,10 +67,20 @@ struct LeftPanel: View {
                 }
                 
                 // Preview Window
-                LoopingVideoPlayer(videoFileName: "video")
-                    .frame(height: 120)
-                    .cornerRadius(8)
-                    .padding(.horizontal, 20)
+                ZStack {
+                    if let selectedVideo = selectedVideo {
+                        // Show selected video preview
+                        ActiveDisplayPreview(video: selectedVideo)
+                            .frame(height: 120)
+                            .cornerRadius(8)
+                    } else {
+                        // Default video preview
+                        LoopingVideoPlayer(videoFileName: "video")
+                            .frame(height: 120)
+                            .cornerRadius(8)
+                    }
+                }
+                .padding(.horizontal, 20)
                 
                 // Set Live Desktop Button
                 Button(action: {
