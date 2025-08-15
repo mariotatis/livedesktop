@@ -20,21 +20,22 @@ struct PopularVideosData: Codable {
 }
 
 struct PopularVideo: Codable, Identifiable {
-    let id = UUID()
+    let id: Int
     let image: String
     let userName: String
     let videoFileHd: String
     let videoFileSd: String
-    let videoPictures: String
+    let videoPicture: String
     let width: Int
     let height: Int
     
     enum CodingKeys: String, CodingKey {
+        case id
         case image
         case userName = "user_name"
         case videoFileHd = "video_file_hd"
         case videoFileSd = "video_file_sd"
-        case videoPictures = "video_pictures"
+        case videoPicture = "video_picture"
         case width
         case height
     }
@@ -44,7 +45,7 @@ struct PopularVideo: Codable, Identifiable {
 extension PopularVideo {
     var videoItem: VideoItem {
         return VideoItem(
-            id: id.uuidString,
+            id: String(id),
             title: "Video", // API doesn't provide title, using default
             author: userName,
             category: "Popular", // Default category for popular videos
