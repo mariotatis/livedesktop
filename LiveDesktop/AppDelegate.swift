@@ -71,7 +71,7 @@ extension AppDelegate: StatusBarManagerDelegate {
                 defer: false
             )
             
-            dashboardWindow?.title = "Live Desktop Dashboard"
+            dashboardWindow?.title = "Live Desktop"
             dashboardWindow?.contentViewController = hostingController
             dashboardWindow?.center()
             dashboardWindow?.setFrameAutosaveName("DashboardWindow")
