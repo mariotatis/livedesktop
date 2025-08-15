@@ -11,6 +11,7 @@ struct LeftPanel: View {
     let displays: [String]
     
     @ObservedObject private var downloadsService = DownloadsService.shared
+    @ObservedObject private var wallpaperService = WallpaperService.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -84,7 +85,14 @@ struct LeftPanel: View {
                 
                 // Set Live Desktop Button
                 Button(action: {
-                    // Action to set wallpaper
+                    if let video = selectedVideo {
+                        wallpaperService.setLiveDesktop(
+                            video: video,
+                            selectedDisplay: selectedDisplay,
+                            mirrorDisplays: mirrorDisplays,
+                            wallpaperManager: WallpaperManager()
+                        )
+                    }
                 }) {
                     Text("Set Live Desktop")
                         .font(.headline)

@@ -9,6 +9,10 @@ class WallpaperManager: NSObject {
     private var isEnabled = false
     private var displayChangeObserver: AnyCancellable?
     
+    private let userDefaults = UserDefaults.standard
+    private let wallpaperVideoKey = "LiveDesktop_WallpaperVideo"
+    private let displayVideoMappingKey = "LiveDesktop_DisplayVideoMapping"
+    
     var isWallpaperEnabled: Bool {
         return isEnabled
     }
@@ -56,18 +60,57 @@ class WallpaperManager: NSObject {
     }
     
     private func setupWallpaper() {
-        guard let videoURL = Bundle.main.url(forResource: "video", withExtension: "mp4") else {
-            print("Error: Video file not found in bundle")
-            return
-        }
-        
         // Clean up any existing wallpapers
         cleanupWallpaper()
         
-        // Create wallpaper for each connected screen using shared DisplayManager
-        for screen in DisplayManager.shared.getAllScreens() {
-            createWallpaperForScreen(screen, videoURL: videoURL)
+        // Create wallpaper for each connected screen with display-specific video
+        for display in DisplayManager.shared.availableDisplays {
+            let videoURL = getWallpaperVideoURL(for: display.name)
+            createWallpaperForScreen(display.screen, videoURL: videoURL)
         }
+    }
+    
+    private func getWallpaperVideoURL(for displayName: String) -> URL {
+        // Check if there's a saved video ID for this specific display
+        if let videoId = getVideoForDisplay(displayName) {
+            if let localVideoURL = getLocalVideoURL(for: videoId) {
+                print("Using saved wallpaper video for \(displayName): \(videoId)")
+                return localVideoURL
+            } else {
+                print("Saved wallpaper video for \(displayName) not found locally, using default")
+            }
+        }
+        
+        // Fallback to global saved video
+        if let savedVideoId = userDefaults.string(forKey: wallpaperVideoKey) {
+            if let localVideoURL = getLocalVideoURL(for: savedVideoId) {
+                print("Using global saved wallpaper video: \(savedVideoId)")
+                return localVideoURL
+            }
+        }
+        
+        // Final fallback to default bundle video
+        guard let defaultVideoURL = Bundle.main.url(forResource: "video", withExtension: "mp4") else {
+            fatalError("Default video file not found in bundle")
+        }
+        
+        return defaultVideoURL
+    }
+    
+    private func getVideoForDisplay(_ displayName: String) -> String? {
+        guard let data = userDefaults.data(forKey: displayVideoMappingKey),
+              let mapping = try? JSONDecoder().decode([String: String].self, from: data) else {
+            return nil
+        }
+        return mapping[displayName]
+    }
+    
+    private func getLocalVideoURL(for videoId: String) -> URL? {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let downloadsPath = documentsPath.appendingPathComponent("Downloads", isDirectory: true)
+        let videoFileURL = downloadsPath.appendingPathComponent("\(videoId).mp4")
+        
+        return FileManager.default.fileExists(atPath: videoFileURL.path) ? videoFileURL : nil
     }
     
     private func createWallpaperForScreen(_ screen: NSScreen, videoURL: URL) {

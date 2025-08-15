@@ -20,7 +20,9 @@ class DownloadsService: NSObject, ObservableObject {
     private var downloadTasks: [String: URLSessionDownloadTask] = [:]
     private lazy var urlSession: URLSession = {
         let config = URLSessionConfiguration.default
-        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        config.timeoutIntervalForRequest = 30.0
+        config.timeoutIntervalForResource = 300.0
+        return URLSession(configuration: config, delegate: self, delegateQueue: OperationQueue.main)
     }()
     
     override private init() {
@@ -48,21 +50,35 @@ class DownloadsService: NSObject, ObservableObject {
             return
         }
         
+        guard !hdURL.isEmpty else {
+            print("❌ DownloadsService: Empty URL for video \(videoId)")
+            return
+        }
+        
         guard let url = URL(string: hdURL) else {
-            print("❌ DownloadsService: Invalid URL for video \(videoId)")
+            print("❌ DownloadsService: Invalid URL for video \(videoId): '\(hdURL)'")
             return
         }
         
         print("📥 DownloadsService: Starting download for video \(videoId)")
+        print("🔗 DownloadsService: URL: \(hdURL)")
         
         // Initialize progress
         DispatchQueue.main.async {
             self.downloadProgress[videoId] = DownloadProgress(videoId: videoId, progress: 0.0, isCompleted: false)
         }
         
-        let task = urlSession.downloadTask(with: url)
-        downloadTasks[videoId] = task
-        task.resume()
+        do {
+            let task = urlSession.downloadTask(with: url)
+            downloadTasks[videoId] = task
+            task.resume()
+            print("✅ DownloadsService: Download task created and resumed for video \(videoId)")
+        } catch {
+            print("❌ DownloadsService: Failed to create download task for video \(videoId): \(error)")
+            DispatchQueue.main.async {
+                self.downloadProgress.removeValue(forKey: videoId)
+            }
+        }
     }
     
     func deleteVideo(videoId: String) {
@@ -140,7 +156,15 @@ class DownloadsService: NSObject, ObservableObject {
 extension DownloadsService: URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         
-        guard let videoId = downloadTasks.first(where: { $0.value == downloadTask })?.key else { return }
+        guard let videoId = downloadTasks.first(where: { $0.value == downloadTask })?.key else { 
+            print("⚠️ DownloadsService: Could not find videoId for download task in progress callback")
+            return 
+        }
+        
+        guard totalBytesExpectedToWrite > 0 else {
+            print("⚠️ DownloadsService: Invalid totalBytesExpectedToWrite: \(totalBytesExpectedToWrite)")
+            return
+        }
         
         let progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
         

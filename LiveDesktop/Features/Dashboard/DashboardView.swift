@@ -14,6 +14,7 @@ struct DashboardView: View {
     @ObservedObject private var popularsService = PopularsService.shared
     @ObservedObject private var favoritesService = FavoritesService.shared
     @ObservedObject private var downloadsService = DownloadsService.shared
+    @ObservedObject private var wallpaperService = WallpaperService.shared
     
     // MARK: - Data
     private let navItems = ["Popular", "Favorites", "Downloads"]
@@ -91,7 +92,7 @@ struct DashboardView: View {
                         }
                     )
                     .overlay(
-                        // Delete message popup
+                        // Status message popups
                         VStack {
                             if downloadsService.showDeleteMessage {
                                 Text(downloadsService.deleteMessage)
@@ -101,9 +102,18 @@ struct DashboardView: View {
                                     .cornerRadius(8)
                                     .transition(.opacity)
                             }
+                            
+                            if wallpaperService.showWallpaperMessage {
+                                Text(wallpaperService.wallpaperMessage)
+                                    .padding()
+                                    .background(Color.black.opacity(0.8))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                    .transition(.opacity)
+                            }
                             Spacer()
                         }
-                        .animation(.easeInOut(duration: 0.3), value: downloadsService.showDeleteMessage)
+                        .animation(.easeInOut(duration: 0.3), value: downloadsService.showDeleteMessage || wallpaperService.showWallpaperMessage)
                     )
                 }
             }
@@ -112,17 +122,23 @@ struct DashboardView: View {
         .background(Color(hex: "#1f1f1f"))
         .frame(minWidth: 1000, minHeight: 700)
         .onAppear {
-            print("🎬 DashboardView: onAppear called")
-            
-            // Auto-select first available display when view appears
-            if selectedDisplay == nil && !displayManager.availableDisplays.isEmpty {
+            // Load saved settings
+            mirrorDisplays = wallpaperService.getMirrorDisplays()
+            if let savedDisplay = wallpaperService.getSelectedDisplay() {
+                selectedDisplay = savedDisplay
+                // Load the video for this display
+                loadVideoForCurrentDisplay()
+            } else if selectedDisplay == nil && !displayManager.availableDisplays.isEmpty {
                 selectedDisplay = displayManager.availableDisplays.first?.name
-                print("📺 DashboardView: Auto-selected display: \(selectedDisplay ?? "none")")
+                loadVideoForCurrentDisplay()
             }
-            
-            // Videos are now loaded at app startup, no need to load here
-            print("🎥 DashboardView: Videos loaded at startup - count: \(popularsService.videos.count)")
-            print("🔄 DashboardView: Filtered videos count: \(filteredVideos.count)")
+        }
+        .onChange(of: selectedDisplay) { newDisplay in
+            // When display changes, load the video for that display
+            if let displayName = newDisplay {
+                wallpaperService.saveSelectedDisplay(displayName)
+                loadVideoForDisplay(displayName)
+            }
         }
         .onChange(of: displayManager.availableDisplays) { displays in
             // Handle display changes - ensure selected display is still valid
@@ -135,6 +151,57 @@ struct DashboardView: View {
                 selectedDisplay = displays.first?.name
             }
         }
+    }
+    
+    // MARK: - Helper Methods
+    private func loadVideoForCurrentDisplay() {
+        if let displayName = selectedDisplay {
+            loadVideoForDisplay(displayName)
+        }
+    }
+    
+    private func loadVideoForDisplay(_ displayName: String) {
+        if let videoId = wallpaperService.getVideoForDisplay(displayName) {
+            // Find the video in our current videos list
+            if let video = findVideoById(videoId) {
+                selectedVideo = video
+            } else {
+                // Video not found in current list, but check if it's downloaded
+                // Create a VideoItem from the saved video ID if it exists locally
+                if downloadsService.isDownloaded(videoId: videoId) {
+                    selectedVideo = createVideoItemFromDownloadedVideo(videoId: videoId)
+                }
+            }
+        } else {
+            // No video set for this display, check for any downloaded video as fallback
+            if let firstDownloadedVideoId = Array(downloadsService.downloadedVideoIds).first,
+               let fallbackVideo = createVideoItemFromDownloadedVideo(videoId: firstDownloadedVideoId) {
+                selectedVideo = fallbackVideo
+            } else {
+                selectedVideo = nil
+            }
+        }
+    }
+    
+    private func findVideoById(_ videoId: String) -> VideoItem? {
+        return popularsService.videos.first { String($0.id) == videoId }?.videoItem
+    }
+    
+    private func createVideoItemFromDownloadedVideo(videoId: String) -> VideoItem? {
+        guard downloadsService.isDownloaded(videoId: videoId),
+              let localURL = downloadsService.getLocalVideoURL(videoId: videoId) else {
+            return nil
+        }
+        
+        // Create a VideoItem for the downloaded video
+        return VideoItem(
+            id: videoId,
+            title: "Downloaded Video",
+            author: "Local",
+            category: "Downloaded",
+            imageURL: nil, // No thumbnail for local videos
+            videoURL: localURL.absoluteString
+        )
     }
 }
 
