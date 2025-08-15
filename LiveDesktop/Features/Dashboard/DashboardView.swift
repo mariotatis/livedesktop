@@ -134,10 +134,13 @@ struct DashboardView: View {
             }
         }
         .onChange(of: selectedDisplay) { newDisplay in
-            // When display changes, load the video for that display
+            // When display changes, save the selection but don't override user's current video choice
             if let displayName = newDisplay {
                 wallpaperService.saveSelectedDisplay(displayName)
-                loadVideoForDisplay(displayName)
+                // Only load saved video if no video is currently selected by user
+                if selectedVideo == nil {
+                    loadVideoForDisplay(displayName)
+                }
             }
         }
         .onChange(of: displayManager.availableDisplays) { displays in
@@ -150,6 +153,9 @@ struct DashboardView: View {
                 // No selection but displays are available, select first
                 selectedDisplay = displays.first?.name
             }
+        }
+        .onChange(of: selectedVideo) { newVideo in
+            print("🔍 DashboardView: selectedVideo changed to: \(newVideo?.id ?? "nil")")
         }
     }
     

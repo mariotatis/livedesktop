@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - Data Models
-struct VideoItem: Identifiable {
+struct VideoItem: Identifiable, Equatable {
     let id: String
     let title: String
     let author: String
@@ -16,6 +16,10 @@ struct VideoItem: Identifiable {
         self.category = category
         self.imageURL = imageURL
         self.videoURL = videoURL
+    }
+    
+    static func == (lhs: VideoItem, rhs: VideoItem) -> Bool {
+        return lhs.id == rhs.id
     }
 }
 

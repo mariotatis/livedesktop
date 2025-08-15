@@ -67,6 +67,7 @@ struct LazyVideoCard: View {
     @ObservedObject private var favoritesService = FavoritesService.shared
     @ObservedObject private var downloadsService = DownloadsService.shared
     @State private var hasLoaded = false
+    @State private var isHovering = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -81,9 +82,6 @@ struct LazyVideoCard: View {
                     HoverVideoPlayer(imageURL: video.imageURL, videoURL: video.videoURL, videoId: video.id)
                         .aspectRatio(16/9, contentMode: .fit)
                         .cornerRadius(12)
-                        .onTapGesture {
-                            selectedVideo = video
-                        }
                 } else {
                     // Placeholder while not loaded
                     Rectangle()
@@ -95,6 +93,14 @@ struct LazyVideoCard: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: .gray))
                         )
                 }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                print("🔍 VideoGrid: Video tapped - \(video.id)")
+                selectedVideo = video
+            }
+            .onHover { hovering in
+                isHovering = hovering
             }
             .overlay(
                 ZStack {
@@ -109,45 +115,48 @@ struct LazyVideoCard: View {
                                 .padding(.horizontal, 12)
                                 .padding(.bottom, 8)
                         }
+                        .allowsHitTesting(false)
                     }
                     
-                    // Action Buttons
+                    // Action Buttons - always visible
                     VStack {
                         HStack {
                             Spacer()
                             
-                            // Download/Delete Button
-                            Button {
-                                if downloadsService.isDownloaded(videoId: video.id) {
-                                    downloadsService.deleteVideo(videoId: video.id)
-                                } else {
-                                    // Get HD URL from PopularsService
-                                    if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
-                                        downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+                            VStack(spacing: 8) {
+                                // Download/Delete Button
+                                Button {
+                                    if downloadsService.isDownloaded(videoId: video.id) {
+                                        downloadsService.deleteVideo(videoId: video.id)
+                                    } else {
+                                        // Get HD URL from PopularsService
+                                        if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
+                                            downloadsService.downloadVideo(videoId: video.id, hdURL: popularVideo.videoFileHd)
+                                        }
                                     }
+                                } label: {
+                                    Image(systemName: downloadsService.isDownloaded(videoId: video.id) ? "trash" : "arrow.down")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .frame(width: 28, height: 28)
                                 }
-                            } label: {
-                                Image(systemName: downloadsService.isDownloaded(videoId: video.id) ? "trash" : "arrow.down")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .frame(width: 28, height: 28)
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(10)
+                                
+                                // Like Button
+                                Button {
+                                    favoritesService.toggleFavorite(videoId: video.id)
+                                } label: {
+                                    Image(systemName: favoritesService.isFavorite(videoId: video.id) ? "heart.fill" : "heart")
+                                        .foregroundColor(favoritesService.isFavorite(videoId: video.id) ? .red : .white)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .frame(width: 28, height: 28)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(10)
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(10)
-                            
-                            // Like Button
-                            Button {
-                                favoritesService.toggleFavorite(videoId: video.id)
-                            } label: {
-                                Image(systemName: favoritesService.isFavorite(videoId: video.id) ? "heart.fill" : "heart")
-                                    .foregroundColor(favoritesService.isFavorite(videoId: video.id) ? .red : .white)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .frame(width: 28, height: 28)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(10)
                         }
                         Spacer()
                     }

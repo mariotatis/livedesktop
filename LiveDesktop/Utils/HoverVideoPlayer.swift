@@ -91,12 +91,14 @@ struct HoverVideoPlayer: View {
                 player = AVPlayer(url: localURL)
                 player?.isMuted = true
                 player?.volume = 0.0
+                setupVideoLooping()
             }
         } else if let videoURL = videoURL, let url = URL(string: videoURL) {
             if player == nil {
                 player = AVPlayer(url: url)
                 player?.isMuted = true
                 player?.volume = 0.0
+                setupVideoLooping()
             }
         } else {
             return
@@ -104,6 +106,21 @@ struct HoverVideoPlayer: View {
         
         withAnimation(.easeInOut(duration: 0.3)) {
             shouldShowVideo = true
+        }
+    }
+    
+    private func setupVideoLooping() {
+        guard let player = player else { return }
+        
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { [weak player] _ in
+            guard let player = player else { return }
+            player.seek(to: .zero) { _ in
+                player.play()
+            }
         }
     }
     

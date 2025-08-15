@@ -100,7 +100,7 @@ class StatusBarManager: NSObject {
         let isEnabled = delegate?.isWallpaperEnabled ?? false
         
         // Label
-        let label = NSTextField(labelWithString: isEnabled ? "Turn Off" : "Turn On")
+        let label = NSTextField(labelWithString: "Enabled")
         label.font = NSFont.systemFont(ofSize: 13)
         label.textColor = NSColor.labelColor
         label.frame = NSRect(x: 16, y: 12, width: 100, height: 16)
@@ -155,7 +155,7 @@ class StatusBarManager: NSObject {
                 if let view = item.view {
                     // Wallpaper toggle controls
                     if let label = view.viewWithTag(998) as? NSTextField {
-                        label.stringValue = isWallpaperEnabled ? "Turn Off" : "Turn On"
+                        label.stringValue = "Enabled"
                     }
                     if let switchControl = view.viewWithTag(999) as? NSSwitch {
                         switchControl.state = isWallpaperEnabled ? .on : .off

@@ -75,6 +75,66 @@ struct ActiveDisplayPreview: View {
     }
 }
 
+// Safe observer class that properly manages KVO
+class SafePlayerObserver: NSObject {
+    weak var playerView: AVPlayerView?
+    weak var player: AVPlayer?
+    private var isObserving = false
+    
+    init(playerView: AVPlayerView, player: AVPlayer) {
+        self.playerView = playerView
+        self.player = player
+        super.init()
+        setupObserver()
+    }
+    
+    private func setupObserver() {
+        guard let player = player, !isObserving else { return }
+        
+        player.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
+        isObserving = true
+        
+        // Setup looping notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(playerDidFinishPlaying),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem
+        )
+    }
+    
+    @objc private func playerDidFinishPlaying() {
+        guard let player = player else { return }
+        player.seek(to: CMTime.zero)
+        player.play()
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        guard keyPath == "status", 
+              let player = self.player, 
+              let playerView = self.playerView else { return }
+        
+        DispatchQueue.main.async {
+            if player.status == .readyToPlay {
+                playerView.alphaValue = 1.0
+                player.play()
+            }
+        }
+    }
+    
+    deinit {
+        cleanup()
+    }
+    
+    func cleanup() {
+        guard isObserving, let player = player else { return }
+        
+        player.removeObserver(self, forKeyPath: "status")
+        NotificationCenter.default.removeObserver(self)
+        isObserving = false
+    }
+}
+
 struct ActiveVideoPlayerView: NSViewRepresentable {
     let videoURL: URL
     let videoId: String
@@ -120,65 +180,6 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
             playerView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
         ])
         
-        // Safe observer class that properly manages KVO
-        class SafePlayerObserver: NSObject {
-            weak var playerView: AVPlayerView?
-            weak var player: AVPlayer?
-            private var isObserving = false
-            
-            init(playerView: AVPlayerView, player: AVPlayer) {
-                self.playerView = playerView
-                self.player = player
-                super.init()
-                setupObserver()
-            }
-            
-            private func setupObserver() {
-                guard let player = player, !isObserving else { return }
-                
-                player.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
-                isObserving = true
-                
-                // Setup looping notification
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(playerDidFinishPlaying),
-                    name: .AVPlayerItemDidPlayToEndTime,
-                    object: player.currentItem
-                )
-            }
-            
-            @objc private func playerDidFinishPlaying() {
-                guard let player = player else { return }
-                player.seek(to: CMTime.zero)
-                player.play()
-            }
-            
-            override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-                guard keyPath == "status", 
-                      let player = self.player, 
-                      let playerView = self.playerView else { return }
-                
-                DispatchQueue.main.async {
-                    if player.status == .readyToPlay {
-                        playerView.alphaValue = 1.0
-                        player.play()
-                    }
-                }
-            }
-            
-            deinit {
-                cleanup()
-            }
-            
-            func cleanup() {
-                guard isObserving, let player = player else { return }
-                
-                player.removeObserver(self, forKeyPath: "status")
-                NotificationCenter.default.removeObserver(self)
-                isObserving = false
-            }
-        }
         
         let observer = SafePlayerObserver(playerView: playerView, player: player)
         objc_setAssociatedObject(containerView, "observer", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -187,6 +188,26 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
-        // Update implementation for container view
+        // Update the player when video changes
+        guard let containerView = nsView as? NSView,
+              let playerView = containerView.subviews.first as? AVPlayerView else { return }
+        
+        // Check if we need to update the video
+        let localURL = downloadsService.getLocalVideoURL(videoId: videoId) ?? videoURL
+        
+        if playerView.player?.currentItem?.asset != AVURLAsset(url: localURL) {
+            // Create new player with updated URL
+            let newPlayer = AVPlayer(url: localURL)
+            newPlayer.actionAtItemEnd = AVPlayer.ActionAtItemEnd.none
+            newPlayer.isMuted = true
+            newPlayer.volume = 0.0
+            
+            // Update player view
+            playerView.player = newPlayer
+            
+            // Setup new observer
+            let observer = SafePlayerObserver(playerView: playerView, player: newPlayer)
+            objc_setAssociatedObject(containerView, "observer", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
     }
 }
