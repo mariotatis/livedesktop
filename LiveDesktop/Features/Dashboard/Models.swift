@@ -6,6 +6,17 @@ struct VideoItem: Identifiable {
     let title: String
     let author: String
     let category: String
+    let imageURL: String?
+    let videoURL: String?
+    
+    init(id: String, title: String, author: String, category: String, imageURL: String? = nil, videoURL: String? = nil) {
+        self.id = id
+        self.title = title
+        self.author = author
+        self.category = category
+        self.imageURL = imageURL
+        self.videoURL = videoURL
+    }
 }
 
 // MARK: - Dropdown Models

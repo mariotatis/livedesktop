@@ -8,6 +8,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var dashboardWindow: NSWindow?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        print("🚀 APP LAUNCHED - Console is working!")
+        
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
         
@@ -19,9 +21,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func setupManagers() {
+        print("🔧 Setting up managers...")
         // Configure status bar manager
         statusBarManager.delegate = self
         statusBarManager.setupStatusBar()
+        print("✅ Status bar manager setup complete")
     }
 }
 
@@ -60,7 +64,9 @@ extension AppDelegate: StatusBarManagerDelegate {
     }
     
     private func openDashboard() {
+        print("🪟 AppDelegate: Opening dashboard window")
         if dashboardWindow == nil {
+            print("🆕 AppDelegate: Creating new DashboardView")
             let dashboardView = DashboardView()
             let hostingController = NSHostingController(rootView: dashboardView)
             

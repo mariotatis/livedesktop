@@ -15,12 +15,16 @@ class StatusBarManager: NSObject {
     weak var delegate: StatusBarManagerDelegate?
     
     func setupStatusBar() {
+        print("📱 StatusBarManager: Setting up status bar item")
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "tv.fill", accessibilityDescription: "LiveDesktop")
             button.action = #selector(statusBarButtonClicked)
             button.target = self
+            print("✅ StatusBarManager: Status bar button configured")
+        } else {
+            print("❌ StatusBarManager: Failed to get status bar button")
         }
     }
     
@@ -177,6 +181,7 @@ class StatusBarManager: NSObject {
     }
     
     @objc private func openDashboard() {
+        print("📋 StatusBarManager: Dashboard menu item clicked")
         delegate?.statusBarDidOpenDashboard()
     }
     

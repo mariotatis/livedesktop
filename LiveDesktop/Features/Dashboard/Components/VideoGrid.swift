@@ -3,6 +3,8 @@ import SwiftUI
 struct VideoGrid: View {
     let filteredVideos: [VideoItem]
     @Binding var likedVideos: Set<String>
+    let isLoading: Bool
+    let onLoadMore: () -> Void
     
     var body: some View {
         ScrollView {
@@ -18,6 +20,25 @@ struct VideoGrid: View {
                             likedVideos.insert(videoId)
                         }
                     }
+                    .onAppear {
+                        // Trigger load more when reaching the last few items
+                        if video.id == filteredVideos.last?.id {
+                            onLoadMore()
+                        }
+                    }
+                }
+                
+                // Loading indicator at bottom
+                if isLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.2)
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                    .gridCellColumns(3)
                 }
             }
             .padding(.bottom, 24)
@@ -37,9 +58,9 @@ struct VideoCard: View {
         VStack(alignment: .leading, spacing: 0) {
             // Video Preview
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(colorForVideo(video.title))
+                AsyncImageView(url: video.imageURL)
                     .aspectRatio(16/9, contentMode: .fit)
+                    .cornerRadius(12)
                 
                 // Action Buttons
                 VStack {

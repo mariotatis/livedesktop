@@ -10,30 +10,21 @@ struct DashboardView: View {
     
     // MARK: - Managers
     @ObservedObject private var displayManager = DisplayManager.shared
+    @StateObject private var popularsService = PopularsService()
     
     // MARK: - Data
     private let navItems = ["Popular", "Favorites", "Downloads"]
     private let filterOptions = ["All", "Nature", "Cities", "Ocean", "Abstract"]
     
-    private let videoData = [
-        VideoItem(id: "1", title: "Aurora", author: "Jane Smith", category: "Nature"),
-        VideoItem(id: "2", title: "Cyberpunk", author: "Alex Chen", category: "Cities"),
-        VideoItem(id: "3", title: "Swirls", author: "John Doe", category: "Abstract"),
-        VideoItem(id: "4", title: "Sunset", author: "Jane Smith", category: "Nature"),
-        VideoItem(id: "5", title: "Highway", author: "Alex Chen", category: "Cities"),
-        VideoItem(id: "6", title: "Fluid", author: "John Doe", category: "Abstract"),
-        VideoItem(id: "7", title: "Rainy", author: "Jane Smith", category: "Nature"),
-        VideoItem(id: "8", title: "Galaxy", author: "Alex Chen", category: "Abstract")
-    ]
-    
     // MARK: - Computed Properties
     private var filteredVideos: [VideoItem] {
+        let videos = popularsService.videos.map { $0.videoItem }
         let currentFilter = selectedFilterOption ?? "All"
-        let filtered = currentFilter == "All" ? videoData : videoData.filter { $0.category == currentFilter }
+        let filtered = currentFilter == "All" ? videos : videos.filter { $0.category == currentFilter }
         if searchText.isEmpty {
             return filtered
         }
-        return filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+        return filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) || $0.author.localizedCaseInsensitiveContains(searchText) }
     }
     
     var body: some View {
@@ -56,19 +47,49 @@ struct DashboardView: View {
                 )
                 
                 // Video Grid
-                VideoGrid(
-                    filteredVideos: filteredVideos,
-                    likedVideos: $likedVideos
-                )
+                if popularsService.videos.isEmpty && popularsService.isLoading {
+                    // Main loading state
+                    VStack {
+                        Spacer()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                        Text("Loading videos...")
+                            .foregroundColor(.gray)
+                            .padding(.top, 16)
+                        Spacer()
+                    }
+                } else {
+                    VideoGrid(
+                        filteredVideos: filteredVideos,
+                        likedVideos: $likedVideos,
+                        isLoading: popularsService.isLoading,
+                        onLoadMore: {
+                            popularsService.loadNextPage()
+                        }
+                    )
+                }
             }
             .background(Color(hex: "#1f1f1f"))
         }
         .background(Color(hex: "#1f1f1f"))
         .frame(minWidth: 1000, minHeight: 700)
         .onAppear {
+            print("🎬 DashboardView: onAppear called")
+            
             // Auto-select first available display when view appears
             if selectedDisplay == nil && !displayManager.availableDisplays.isEmpty {
                 selectedDisplay = displayManager.availableDisplays.first?.name
+                print("📺 DashboardView: Auto-selected display: \(selectedDisplay ?? "none")")
+            }
+            
+            // Load popular videos when view appears
+            print("🎥 DashboardView: Checking if videos are empty - count: \(popularsService.videos.count)")
+            if popularsService.videos.isEmpty {
+                print("🚀 DashboardView: Calling popularsService.loadPopularVideos()")
+                popularsService.loadPopularVideos()
+            } else {
+                print("⚠️ DashboardView: Videos already loaded, skipping API call")
             }
         }
         .onChange(of: displayManager.availableDisplays) { displays in
