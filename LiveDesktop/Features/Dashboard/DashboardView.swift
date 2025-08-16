@@ -12,6 +12,7 @@ struct DashboardView: View {
     // MARK: - Managers
     @ObservedObject private var displayManager = DisplayManager.shared
     @ObservedObject private var popularsService = PopularsService.shared
+    @ObservedObject private var searchService = SearchService.shared
     @ObservedObject private var favoritesService = FavoritesService.shared
     @ObservedObject private var downloadsService = DownloadsService.shared
     @ObservedObject private var wallpaperService = WallpaperService.shared
@@ -21,10 +22,27 @@ struct DashboardView: View {
     private let filterOptions = ["All", "Nature", "Cities", "Ocean", "Abstract"]
     
     // MARK: - Computed Properties
+    private var isSearchActive: Bool {
+        return !searchText.isEmpty && searchText.count >= 3
+    }
+    
     private var filteredVideos: [VideoItem] {
+        // If search is active, return search results
+        if isSearchActive {
+            let searchResults = searchService.searchResults.map { $0.videoItem }
+            
+            // Apply category filter to search results
+            let currentFilter = selectedFilterOption ?? "All"
+            if currentFilter == "All" {
+                return searchResults
+            } else {
+                return searchResults.filter { $0.category == currentFilter }
+            }
+        }
+        
+        // Otherwise, use normal navigation-based filtering
         let videos: [VideoItem]
         
-        // Switch between Popular, Favorites, and Downloads based on selected nav item
         switch selectedNavItem {
         case "Favorites":
             videos = favoritesService.getFavoriteVideos()
@@ -36,25 +54,11 @@ struct DashboardView: View {
         
         // Apply category filter
         let currentFilter = selectedFilterOption ?? "All"
-        let categoryFiltered: [VideoItem]
         if currentFilter == "All" {
-            categoryFiltered = videos
+            return videos
         } else {
-            categoryFiltered = videos.filter { $0.category == currentFilter }
+            return videos.filter { $0.category == currentFilter }
         }
-        
-        // Apply search filter
-        if searchText.isEmpty {
-            return categoryFiltered
-        }
-        
-        let searchFiltered = categoryFiltered.filter { video in
-            let titleMatch = video.title.localizedCaseInsensitiveContains(searchText)
-            let authorMatch = video.author.localizedCaseInsensitiveContains(searchText)
-            return titleMatch || authorMatch
-        }
-        
-        return searchFiltered
     }
     
     var body: some View {
@@ -64,14 +68,36 @@ struct DashboardView: View {
             mirrorDisplays: $mirrorDisplays,
             selectedVideo: $selectedVideo,
             navItems: navItems,
-            displays: displayManager.getDisplayNames()
+            displays: displayManager.getDisplayNames(),
+            isSearchActive: isSearchActive,
+            onNavItemSelected: { item in
+                // Clear search when switching navigation items
+                searchText = ""
+                searchService.clearSearchResults()
+                selectedNavItem = item
+            }
         )
         .frame(width: 280)
         
         let searchPanel = SearchAndFilterPanel(
             searchText: $searchText,
             selectedFilterOption: $selectedFilterOption,
-            filterOptions: filterOptions
+            selectedNavItem: $selectedNavItem,
+            isSearching: .constant(searchService.isSearching),
+            filterOptions: filterOptions,
+            onSearchTextChange: { newText in
+                if newText.isEmpty {
+                    searchService.clearSearchResults()
+                    // Keep current selectedNavItem when clearing search text
+                } else if newText.count >= 3 {
+                    searchService.searchWithDebounce(query: newText)
+                    selectedNavItem = ""  // Unselect nav item when searching
+                }
+            },
+            onClearSearch: {
+                searchService.clearSearchResults()
+                selectedNavItem = "Popular"
+            }
         )
         
         let loadingView = VStack {
@@ -88,13 +114,16 @@ struct DashboardView: View {
         let videoGridView = VideoGrid(
             filteredVideos: filteredVideos,
             likedVideos: .constant(Set(favoritesService.favoriteVideos.map { $0.id })),
-            isLoading: popularsService.isLoading,
+            isLoading: isSearchActive ? searchService.isSearching : popularsService.isLoading,
             selectedVideo: $selectedVideo,
             onLoadMore: {
-                if selectedNavItem == "Popular" {
+                if isSearchActive {
+                    searchService.loadNextPage()
+                } else if selectedNavItem == "Popular" {
                     PopularsService.shared.loadNextPage()
                 }
-            }
+            },
+            isSearchActive: isSearchActive
         )
         
         let statusOverlay = VStack {

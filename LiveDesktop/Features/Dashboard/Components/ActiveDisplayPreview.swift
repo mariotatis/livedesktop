@@ -94,11 +94,15 @@ struct ActiveDisplayPreviewOverlay: View {
                             print("🔍 ActiveDisplayPreview: Attempting download for video ID: \(video.id)")
                             print("🔍 ActiveDisplayPreview: PopularsService has \(popularsService.videos.count) videos")
                             
-                            if let popularVideo = popularsService.videos.first(where: { String($0.id) == video.id }) {
+                            // Use HD URL from VideoItem if available, otherwise fallback to PopularsService
+                            if let hdURL = video.videoURLHD {
+                                print("✅ ActiveDisplayPreview: Using HD URL from VideoItem: \(hdURL)")
+                                downloadsService.downloadVideo(video: video, hdURL: hdURL)
+                            } else if let popularVideo = popularsService.videos.first(where: { String($0.id) == video.id }) {
                                 print("✅ ActiveDisplayPreview: Found video in PopularsService, HD URL: \(popularVideo.videoFileHd)")
                                 downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
                             } else {
-                                print("❌ ActiveDisplayPreview: Video \(video.id) not found in PopularsService")
+                                print("❌ ActiveDisplayPreview: Video \(video.id) not found in PopularsService and no HD URL in VideoItem")
                                 print("🔍 ActiveDisplayPreview: Available video IDs: \(popularsService.videos.map { String($0.id) })")
                             }
                         }) {

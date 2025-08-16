@@ -9,6 +9,8 @@ struct LeftPanel: View {
     
     let navItems: [String]
     let displays: [String]
+    let isSearchActive: Bool
+    let onNavItemSelected: (String) -> Void
     
     @ObservedObject private var downloadsService = DownloadsService.shared
     @ObservedObject private var wallpaperService = WallpaperService.shared
@@ -21,9 +23,10 @@ struct LeftPanel: View {
                     NavigationButton(
                         title: item,
                         icon: iconForNavItem(item),
-                        isSelected: selectedNavItem == item
+                        isSelected: selectedNavItem == item && !isSearchActive,
+                        isSearchActive: isSearchActive
                     ) {
-                        selectedNavItem = item
+                        onNavItemSelected(item)
                     }
                 }
             }
@@ -142,6 +145,7 @@ struct NavigationButton: View {
     let title: String
     let icon: String
     let isSelected: Bool
+    let isSearchActive: Bool
     let action: () -> Void
     
     var body: some View {
@@ -161,7 +165,7 @@ struct NavigationButton: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.purple.opacity(0.2) : Color.clear)
+                .fill(isSelected ? Color.purple.opacity(0.2) : (isSearchActive ? Color.clear : Color.clear))
         )
         .contentShape(Rectangle())
         .onTapGesture {

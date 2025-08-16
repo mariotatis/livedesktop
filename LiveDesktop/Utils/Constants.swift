@@ -5,5 +5,6 @@ struct APIConstants {
     
     struct Endpoints {
         static let popularVideos = "/api/v1/videos/popular"
+        static let searchVideos = "/api/v1/videos/search"
     }
 }

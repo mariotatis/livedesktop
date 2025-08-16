@@ -6,6 +6,7 @@ struct VideoGrid: View {
     let isLoading: Bool
     @Binding var selectedVideo: VideoItem?
     let onLoadMore: () -> Void
+    let isSearchActive: Bool
     
     var body: some View {
         ScrollView {
@@ -129,8 +130,10 @@ struct LazyVideoCard: View {
                                     if downloadsService.isDownloaded(videoId: video.id) {
                                         downloadsService.deleteVideo(videoId: video.id)
                                     } else {
-                                        // Get HD URL from PopularsService
-                                        if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
+                                        // Use HD URL from VideoItem if available, otherwise fallback to PopularsService
+                                        if let hdURL = video.videoURLHD {
+                                            downloadsService.downloadVideo(video: video, hdURL: hdURL)
+                                        } else if let popularVideo = PopularsService.shared.videos.first(where: { String($0.id) == video.id }) {
                                             downloadsService.downloadVideo(video: video, hdURL: popularVideo.videoFileHd)
                                         }
                                     }
