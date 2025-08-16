@@ -4,6 +4,8 @@ import AVFoundation
 
 struct ActiveDisplayPreview: View {
     let video: VideoItem
+    @State private var isVideoReady = false
+    @State private var currentVideoId: String = ""
     
     var body: some View {
         ZStack {
@@ -14,15 +16,44 @@ struct ActiveDisplayPreview: View {
             }
             .cornerRadius(8)
             .clipped()
-            .background(Color.clear)
+            .opacity(isVideoReady ? 0.3 : 1.0) // Keep slightly visible under video
             
-            // Video Player overlay (always visible and playing)
+            // Video Player overlay with smooth transitions
             if let videoURL = URL(string: video.videoURL ?? "") {
                 ActiveVideoPlayerView(videoURL: videoURL, videoId: video.id)
-                    .id("video-player-\(video.id)") // Stable ID to prevent recreation
+                    .id("stable-video-player") // Fixed ID to prevent recreation on video change
                     .cornerRadius(8)
                     .clipped()
                     .background(Color.clear)
+                    .opacity(isVideoReady ? 1.0 : 0.0)
+                    .onAppear {
+                        if currentVideoId != video.id {
+                            currentVideoId = video.id
+                            isVideoReady = false
+                            
+                            // Smooth fade-in after video loads
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                withAnimation(.easeOut(duration: 0.8)) {
+                                    isVideoReady = true
+                                }
+                            }
+                        }
+                    }
+                    .onChange(of: video.id) { oldId, newId in
+                        if oldId != newId {
+                            currentVideoId = newId
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isVideoReady = false
+                            }
+                            
+                            // Fade in new video
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                withAnimation(.easeOut(duration: 0.8)) {
+                                    isVideoReady = true
+                                }
+                            }
+                        }
+                    }
             }
             
             // Download overlay - separate component to isolate state changes
@@ -164,8 +195,8 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
         playerView.layer?.backgroundColor = NSColor.clear.cgColor
         playerView.layer?.isOpaque = false
         
-        // Initially hide player until video is ready to avoid black box
-        playerView.alphaValue = 0.0
+        // Start visible since SwiftUI handles opacity animations
+        playerView.alphaValue = 1.0
         
         // Use the provided video URL directly
         let player = AVPlayer(url: videoURL)
@@ -201,11 +232,27 @@ struct ActiveVideoPlayerView: NSViewRepresentable {
         let observer = SafePlayerObserver(playerView: playerView, player: player)
         objc_setAssociatedObject(containerView, "observer", observer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
+        // Start with video visible since SwiftUI layer handles opacity
+        playerView.alphaValue = 1.0
+        player.play()
+        
         return containerView
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
-        // Don't update the player - let it play continuously
-        // This prevents black flashing when video selection changes
+        // Update the player URL without recreating the player
+        guard let playerView = nsView.subviews.first as? AVPlayerView,
+              let currentPlayer = playerView.player else { return }
+        
+        // Check if the URL has changed
+        let currentAsset = currentPlayer.currentItem?.asset as? AVURLAsset
+        if currentAsset?.url != videoURL {
+            // Create new item with preloading
+            let newItem = AVPlayerItem(url: videoURL)
+            
+            // Replace the current item and let SwiftUI handle the animation
+            currentPlayer.replaceCurrentItem(with: newItem)
+            currentPlayer.play()
+        }
     }
 }
